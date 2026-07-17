@@ -1,0 +1,145 @@
+:root {
+  /* Foundation palette: raw values stay here; product code consumes semantic tokens. */
+  --palette-blue-50: #eef6ff;
+  --palette-blue-100: #dbeafe;
+  --palette-blue-500: #1687ff;
+  --palette-blue-600: #0877ff;
+  --palette-blue-700: #0565dc;
+  --palette-blue-800: #0d4fa8;
+  --palette-green-500: #0fbf9f;
+  --palette-amber-500: #f5a623;
+  --palette-red-500: #e5484d;
+  --palette-navy-950: #0d2648;
+  --palette-navy-900: #102646;
+  --palette-navy-700: #4c6380;
+  --palette-navy-500: #7689a4;
+  --palette-navy-400: #8a9ab1;
+  --palette-navy-300: #b8c5d6;
+  --palette-navy-200: #d4deeb;
+  --palette-slate-100: #eef2f7;
+  --palette-slate-50: #f8fbff;
+  --palette-white: #ffffff;
+
+  /* Semantic color */
+  --color-primary: var(--palette-blue-600);
+  --color-primary-hover: var(--palette-blue-500);
+  --color-primary-active: var(--palette-blue-700);
+  --color-primary-subtle: var(--palette-blue-50);
+  --color-success: var(--palette-green-500);
+  --color-warning: var(--palette-amber-500);
+  --color-danger: var(--palette-red-500);
+  --color-bg-app: var(--palette-slate-100);
+  --color-bg-surface: var(--palette-white);
+  --color-bg-subtle: var(--palette-slate-50);
+  --color-bg-hover: rgba(8, 119, 255, 0.06);
+  --color-bg-active: rgba(8, 119, 255, 0.12);
+  --color-text-primary: var(--palette-navy-900);
+  --color-text-secondary: var(--palette-navy-700);
+  --color-text-muted: var(--palette-navy-500);
+  --color-text-placeholder: var(--palette-navy-400);
+  --color-text-disabled: rgba(16, 38, 70, 0.35);
+  --color-border: var(--palette-navy-200);
+  --color-border-strong: var(--palette-navy-300);
+  --color-border-disabled: rgba(184, 197, 214, 0.6);
+  --color-control-disabled: rgba(238, 242, 247, 0.8);
+  --color-focus: rgba(8, 119, 255, 0.22);
+  --color-error-focus: rgba(229, 72, 77, 0.18);
+  --color-warning-focus: rgba(245, 166, 35, 0.2);
+
+  /* Typography */
+  --font-family-sans:
+    Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-caption: 12px;
+  --font-size-body-sm: 14px;
+  --font-size-body: 16px;
+  --font-size-body-lg: 18px;
+  --font-size-title-sm: 20px;
+  --font-size-title: 24px;
+  --font-size-title-lg: 32px;
+  --font-size-display: 40px;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+
+  /* 8px spacing grid */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-8: 64px;
+  --space-9: 72px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --border-width: 1px;
+
+  /* Elevation */
+  --shadow-sm: 0 2px 8px rgba(16, 38, 70, 0.06);
+  --shadow-md: 0 8px 24px rgba(16, 38, 70, 0.08);
+  --shadow-lg: 0 16px 40px rgba(16, 38, 70, 0.12);
+  --shadow-xl: 0 24px 48px rgba(42, 67, 101, 0.14);
+  --shadow-primary: 0 6px 14px rgba(8, 119, 255, 0.22);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Global component and layout metrics */
+  --layout-header-height: 64px;
+  --layout-sidebar-width: 240px;
+  --layout-sidebar-collapsed-width: 80px;
+  --layout-content-padding: 24px;
+  --layout-app-min-width: 1280px;
+  --layout-page-max-width: 1600px;
+  --control-height-sm: 32px;
+  --control-height: 40px;
+  --control-height-lg: 48px;
+  --card-padding: 24px;
+
+  /* Login-only visual tokens: do not use these in dashboard modules. */
+  --auth-control-height: 72px;
+  --auth-card-width: 656px;
+  --auth-card-padding-block: 72px;
+  --auth-card-padding-inline: 70px;
+  --auth-card-bg: rgba(255, 255, 255, 0.68);
+  --auth-card-border: rgba(184, 197, 215, 0.56);
+  --auth-field-bg: rgba(255, 255, 255, 0.5);
+  --auth-backdrop-blur: 12px;
+  --auth-bg-start: #f8fbff;
+  --auth-bg-middle: #f4f9ff;
+  --auth-bg-end: #eff7ff;
+  --auth-glow-blue: rgba(226, 237, 252, 0.92);
+  --auth-glow-blue-transparent: rgba(226, 237, 252, 0);
+  --auth-glow-cyan: rgba(126, 205, 232, 0.42);
+  --auth-glow-cyan-transparent: rgba(126, 205, 232, 0);
+  --auth-curve-primary: rgba(44, 111, 255, 0.34);
+  --auth-curve-secondary: rgba(84, 155, 255, 0.2);
+  --auth-curve-accent: rgba(38, 197, 189, 0.2);
+  --auth-node-blue: var(--palette-blue-500);
+  --auth-node-green: var(--palette-green-500);
+  --auth-node-purple: #625cf5;
+  --auth-node-orange: #ff8c31;
+  --auth-node-halo: rgba(48, 126, 255, 0.08);
+  --auth-node-shadow: 0 6px 8px rgba(45, 100, 220, 0.16);
+
+  /* Layer */
+  --opacity-disabled: 0.45;
+  --opacity-overlay: 0.48;
+  --z-header: 100;
+  --z-overlay: 1000;
+  --z-toast: 1100;
+}

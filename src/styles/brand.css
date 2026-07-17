@@ -1,0 +1,37 @@
+.brand-title {
+  overflow: hidden;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-tight);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-title-large {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-title-lg);
+  line-height: var(--line-height-tight);
+  font-weight: var(--font-weight-heavy);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.brand-subtitle {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-title-sm);
+  line-height: var(--line-height-normal);
+  font-weight: var(--font-weight-regular);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .brand-title-large {
+    font-size: var(--font-size-title);
+  }
+
+  .brand-subtitle {
+    font-size: var(--font-size-body-sm);
+    white-space: normal;
+  }
+}
