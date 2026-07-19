@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { LoginLayout } from '@/layouts'
-import { BlankRoutePage } from './pages/BlankRoutePage'
 import { ForbiddenPage, NotFoundPage } from './pages/StatusPages'
 
 export const router = createRouter({
@@ -23,6 +22,10 @@ export const router = createRouter({
       children: [
         {
           path: '',
+          redirect: '/workspace',
+        },
+        {
+          path: 'workspace',
           name: 'Dashboard',
           component: () =>
             import('@/features/dashboard/pages/DashboardPage.vue'),
@@ -30,32 +33,31 @@ export const router = createRouter({
         {
           path: 'projects',
           name: 'Projects',
-          component: BlankRoutePage,
-          props: { title: '项目管理' },
+          component: () => import('@/features/projects/pages/ProjectsPage.vue'),
         },
         {
-          path: 'tasks',
-          name: 'Tasks',
-          component: BlankRoutePage,
-          props: { title: '任务中心' },
+          path: 'projects/:projectId',
+          redirect: (to) => `/projects/${String(to.params.projectId)}/overview`,
         },
         {
-          path: 'files',
-          name: 'Files',
-          component: BlankRoutePage,
-          props: { title: '文件协作' },
+          path: 'projects/:projectId/:section(overview|requirements|tasks|defects|sprints|phases|versions|tests|members|activity|configuration)',
+          name: 'ProjectDetail',
+          component: () =>
+            import('@/features/projects/pages/ProjectDetailPage.vue'),
         },
         {
-          path: 'approvals',
-          name: 'Approvals',
-          component: BlankRoutePage,
-          props: { title: '审批流程' },
+          path: 'configuration',
+          redirect: '/configuration/project-types',
+        },
+        {
+          path: 'configuration/:section(project-types|workflows|roles)/:typeKey(scrum|waterfall)?',
+          name: 'ConfigurationCenter',
+          component: () =>
+            import('@/features/configuration/pages/ConfigurationCenterPage.vue'),
         },
         {
           path: 'settings',
-          name: 'Settings',
-          component: BlankRoutePage,
-          props: { title: '系统设置' },
+          redirect: '/configuration/project-types',
         },
         {
           path: '403',

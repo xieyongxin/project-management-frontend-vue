@@ -1,14 +1,23 @@
 <template>
-  <nav aria-label="主导航" class="min-h-0 flex-1 overflow-y-auto">
+  <nav
+    :aria-label="collapsed ? '主导航，已收起' : '主导航'"
+    class="min-h-0 flex-1 overflow-y-auto"
+  >
     <ElMenu
-      class="app-sidebar-menu"
+      :class="['app-sidebar-menu', { 'is-collapsed': collapsed }]"
       mode="vertical"
       :default-active="selectedKey"
       :default-openeds="openKeys"
+      :collapse="collapsed"
+      :collapse-transition="false"
       @select="handleSelect"
     >
       <template v-for="node in navigation" :key="node.key">
-        <ElSubMenu v-if="node.children?.length" :index="node.key">
+        <ElSubMenu
+          v-if="node.children?.length"
+          :index="node.key"
+          :aria-label="node.label"
+        >
           <template #title>
             <ElIcon v-if="node.icon"><component :is="node.icon" /></ElIcon>
             <span>{{ node.label }}</span>
@@ -17,15 +26,18 @@
             v-for="child in node.children"
             :key="child.key"
             :index="child.key"
+            :aria-label="child.label"
           >
             <ElIcon v-if="child.icon"><component :is="child.icon" /></ElIcon>
             <span>{{ child.label }}</span>
           </ElMenuItem>
         </ElSubMenu>
 
-        <ElMenuItem v-else :index="node.key">
+        <ElMenuItem v-else :index="node.key" :aria-label="node.label">
           <ElIcon v-if="node.icon"><component :is="node.icon" /></ElIcon>
-          <span>{{ node.label }}</span>
+          <template #title>
+            <span>{{ node.label }}</span>
+          </template>
         </ElMenuItem>
       </template>
     </ElMenu>
@@ -43,6 +55,7 @@ import {
 
 const props = defineProps<{
   navigation: readonly AppNavigationNode[]
+  collapsed: boolean
 }>()
 
 const route = useRoute()
@@ -73,6 +86,7 @@ const handleSelect = (key: string) => {
   border-right: 0;
   background: transparent;
   padding-block: var(--space-1);
+  width: 100%;
 }
 
 .app-sidebar-menu :deep(.el-menu-item),
@@ -81,5 +95,15 @@ const handleSelect = (key: string) => {
   margin-inline: var(--space-1);
   border-radius: var(--radius-md);
   line-height: var(--control-height-lg);
+}
+
+.app-sidebar-menu.is-collapsed :deep(.el-menu-item),
+.app-sidebar-menu.is-collapsed :deep(.el-sub-menu__title) {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.app-sidebar-menu.is-collapsed :deep(.el-icon) {
+  margin-right: 0;
 }
 </style>

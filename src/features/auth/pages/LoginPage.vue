@@ -15,14 +15,32 @@
         :title="errorMessage"
       />
 
-      <ElForm class="mt-12" novalidate @submit.prevent="submit">
+      <section class="mt-12" aria-label="企业微信登录">
+        <ElButton
+          class="auth-wecom-button w-full"
+          type="primary"
+          size="large"
+          :loading="wecomAuthorizeMutation.isPending.value"
+          @click="startWecomLogin"
+        >
+          <ElIcon><Connection /></ElIcon>
+          企业微信授权登录
+        </ElButton>
+        <p class="auth-login-hint">
+          员工使用企业微信统一身份登录；停用、离职或未同步用户将被拒绝访问。
+        </p>
+      </section>
+
+      <ElDivider class="auth-divider">应急管理员入口</ElDivider>
+
+      <ElForm class="mt-8" novalidate @submit.prevent="submit">
         <div class="flex flex-col gap-8">
           <FormTextField
             v-model="form.email"
             label="邮箱地址"
             hide-label
             autocomplete="username"
-            placeholder="请输入邮箱地址"
+            placeholder="请输入应急管理员邮箱"
             :error="fieldErrors.email"
             size="large"
           >
@@ -60,7 +78,7 @@
           size="large"
           :loading="loginMutation.isPending.value"
         >
-          登录
+          应急登录
         </ElButton>
       </ElForm>
     </ElCard>
@@ -68,21 +86,23 @@
 </template>
 
 <script setup lang="ts">
-import { Lock, Message } from '@element-plus/icons-vue'
+import { Connection, Lock, Message } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AppError } from '@/shared/api'
 import { BrandMark } from '@/shared/components'
 import { FormTextField } from '@/shared/form'
-import { useLogin } from '../composables/auth.queries'
+import { useLogin, useWecomAuthorize } from '../composables/auth.queries'
 import { loginSchema } from '../model/login.schema'
+import { resolveSafeReturnTo } from '../model/return-to'
 import type { LoginCredentials } from '../model/login.schema'
 
 const rememberedEmailStorageKey = 'project-management.remembered-email'
 const router = useRouter()
 const route = useRoute()
 const loginMutation = useLogin()
+const wecomAuthorizeMutation = useWecomAuthorize()
 const rememberEmail = ref(
   Boolean(window.localStorage.getItem(rememberedEmailStorageKey)),
 )
@@ -109,6 +129,17 @@ const errorMessage = computed(() => {
 onMounted(() => {
   document.title = '登录 · 项目协作工作台'
 })
+
+const startWecomLogin = async () => {
+  try {
+    const authorizeUrl = await wecomAuthorizeMutation.mutateAsync(
+      resolveSafeReturnTo(route.query.returnTo),
+    )
+    window.location.assign(authorizeUrl)
+  } catch {
+    ElMessage.error('企业微信授权地址获取失败，请稍后重试。')
+  }
+}
 
 const validateForm = () => {
   fieldErrors.email = undefined
@@ -146,10 +177,7 @@ const submit = async () => {
       window.localStorage.removeItem(rememberedEmailStorageKey)
     }
 
-    const returnTo = Array.isArray(route.query.returnTo)
-      ? route.query.returnTo[0]
-      : route.query.returnTo
-    await router.replace(returnTo ?? '/')
+    await router.replace(resolveSafeReturnTo(route.query.returnTo))
   } catch {
     // Mutation 状态负责渲染统一 AppError，保留表单输入供用户修正。
   }
@@ -181,5 +209,20 @@ const showResetHelp = () => {
 .auth-card :deep(.el-button--large) {
   min-height: var(--auth-control-height);
   font-size: var(--font-size-title-sm);
+}
+
+.auth-wecom-button {
+  box-shadow: var(--shadow-primary);
+}
+
+.auth-login-hint {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-normal);
+}
+
+.auth-divider {
+  margin: var(--space-4) 0 var(--space-2);
 }
 </style>

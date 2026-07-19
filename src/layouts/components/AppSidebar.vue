@@ -8,7 +8,7 @@
     }"
   >
     <SidebarLogo :collapsed="collapsed" />
-    <SidebarMenu :navigation="navigation" />
+    <SidebarMenu :navigation="navigation" :collapsed="collapsed" />
 
     <div class="border-divider flex-none border-t p-[var(--space-1)]">
       <ElTooltip v-if="collapsed" content="展开菜单" placement="right">

@@ -6,9 +6,11 @@
   --palette-blue-600: #0877ff;
   --palette-blue-700: #0565dc;
   --palette-blue-800: #0d4fa8;
+  --palette-purple-500: #7c5cff;
   --palette-green-500: #0fbf9f;
   --palette-amber-500: #f5a623;
   --palette-red-500: #e5484d;
+  --palette-cyan-500: #14b8c4;
   --palette-navy-950: #0d2648;
   --palette-navy-900: #102646;
   --palette-navy-700: #4c6380;
@@ -25,11 +27,15 @@
   --color-primary-hover: var(--palette-blue-500);
   --color-primary-active: var(--palette-blue-700);
   --color-primary-subtle: var(--palette-blue-50);
+  --color-secondary: var(--palette-purple-500);
   --color-success: var(--palette-green-500);
   --color-warning: var(--palette-amber-500);
   --color-danger: var(--palette-red-500);
+  --color-info: var(--palette-cyan-500);
   --color-bg-app: var(--palette-slate-100);
+  --color-bg-page: var(--palette-slate-100);
   --color-bg-surface: var(--palette-white);
+  --color-bg-card: var(--palette-white);
   --color-bg-subtle: var(--palette-slate-50);
   --color-bg-hover: rgba(8, 119, 255, 0.06);
   --color-bg-active: rgba(8, 119, 255, 0.12);
@@ -40,6 +46,7 @@
   --color-text-disabled: rgba(16, 38, 70, 0.35);
   --color-border: var(--palette-navy-200);
   --color-border-strong: var(--palette-navy-300);
+  --color-divider: rgba(212, 222, 235, 0.72);
   --color-border-disabled: rgba(184, 197, 214, 0.6);
   --color-control-disabled: rgba(238, 242, 247, 0.8);
   --color-focus: rgba(8, 119, 255, 0.22);
@@ -103,11 +110,13 @@
   --layout-sidebar-width: 240px;
   --layout-sidebar-collapsed-width: 80px;
   --layout-content-padding: 24px;
+  --page-padding: var(--layout-content-padding);
   --layout-app-min-width: 1280px;
   --layout-page-max-width: 1600px;
   --control-height-sm: 32px;
   --control-height: 40px;
   --control-height-lg: 48px;
+  --table-row-height: 56px;
   --card-padding: 24px;
 
   /* Login-only visual tokens: do not use these in dashboard modules. */

@@ -1,19 +1,12 @@
-import {
-  Checked,
-  Document,
-  Folder,
-  HomeFilled,
-  Setting,
-  UserFilled,
-} from '@element-plus/icons-vue'
+import { Folder, HomeFilled, Operation } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import type { AppNavigationNode } from '@/layouts'
 
 export const appNavigation = [
   {
     key: 'dashboard',
-    label: '仪表盘',
-    path: '/',
+    label: '工作台',
+    path: '/workspace',
     icon: HomeFilled,
   },
   {
@@ -23,28 +16,10 @@ export const appNavigation = [
     icon: Folder,
   },
   {
-    key: 'tasks',
-    label: '任务中心',
-    path: '/tasks',
-    icon: Checked,
-  },
-  {
-    key: 'files',
-    label: '文件协作',
-    path: '/files',
-    icon: Document,
-  },
-  {
-    key: 'approvals',
-    label: '审批流程',
-    path: '/approvals',
-    icon: UserFilled,
-  },
-  {
-    key: 'settings',
-    label: '系统设置',
-    path: '/settings',
-    icon: Setting,
+    key: 'configuration',
+    label: '配置中心',
+    path: '/configuration/project-types',
+    icon: Operation,
   },
 ] satisfies readonly (Omit<AppNavigationNode, 'icon'> & {
   icon: Component

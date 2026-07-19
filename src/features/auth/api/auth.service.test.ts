@@ -8,7 +8,7 @@ describe('auth.service', () => {
       password: 'demo1234',
     })
 
-    expect(user.displayName).toBe('演示用户')
+    expect(user.displayName).toBe('张思远')
     expect(user.permissions.has('dashboard:read')).toBe(true)
   })
 

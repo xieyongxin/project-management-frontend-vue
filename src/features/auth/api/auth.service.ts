@@ -1,7 +1,8 @@
 import {
+  emergencyLogin,
   getCsrfToken,
   getCurrentUser,
-  login,
+  getWecomAuthorize,
   logout,
 } from '@/shared/api/generated/auth-api'
 import { setCsrfToken } from '@/shared/api/client'
@@ -19,10 +20,22 @@ export const fetchCurrentUser = async () => {
   return mapCurrentUser(dto)
 }
 
-export const loginWithCredentials = async (credentials: LoginCredentials) => {
-  await login(credentials)
+export const getWecomAuthorizeUrl = async (returnTo?: string) => {
+  const response = await getWecomAuthorize({
+    redirect_uri: returnTo ?? window.location.origin,
+  })
+
+  return response.authorize_url
+}
+
+export const loginWithEmergencyCredentials = async (
+  credentials: LoginCredentials,
+) => {
+  await emergencyLogin(credentials)
   return fetchCurrentUser()
 }
+
+export const loginWithCredentials = loginWithEmergencyCredentials
 
 export const logoutCurrentUser = async () => {
   await logout()
