@@ -1,22 +1,19 @@
 <template>
-  <main
-    class="auth-layout relative grid min-h-screen overflow-hidden lg:grid-cols-[minmax(704px,800px)_1fr]"
-  >
+  <main class="auth-layout">
     <AuthBackgroundDecoration />
 
-    <section
-      class="relative z-10 flex items-center justify-center px-6 py-12 lg:justify-end lg:pr-12 lg:pl-0"
-    >
-      <RouterView />
-    </section>
+    <div class="auth-container">
+      <section class="auth-card-slot" aria-label="登录表单">
+        <RouterView />
+      </section>
 
-    <section
-      class="relative z-10 hidden -translate-y-14 items-center justify-start pr-8 pl-12 lg:flex"
-    >
-      <h1 class="auth-hero-title w-full max-w-[720px]">
-        连接每一次协作，推动每一次交付
-      </h1>
-    </section>
+      <section class="auth-slogan" aria-label="产品标语">
+        <h1 class="auth-hero-title">
+          <span>连接每一次协作，</span>
+          <span>推动每一次交付</span>
+        </h1>
+      </section>
+    </div>
   </main>
 </template>
 

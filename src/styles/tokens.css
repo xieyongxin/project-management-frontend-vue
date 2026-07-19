@@ -120,10 +120,10 @@
   --card-padding: 24px;
 
   /* Login-only visual tokens: do not use these in dashboard modules. */
-  --auth-control-height: 72px;
-  --auth-card-width: 656px;
-  --auth-card-padding-block: 72px;
-  --auth-card-padding-inline: 70px;
+  --auth-control-height: 60px;
+  --auth-card-width: 520px;
+  --auth-card-padding-block: 50px;
+  --auth-card-padding-inline: 50px;
   --auth-card-bg: rgba(255, 255, 255, 0.68);
   --auth-card-border: rgba(184, 197, 215, 0.56);
   --auth-field-bg: rgba(255, 255, 255, 0.5);
