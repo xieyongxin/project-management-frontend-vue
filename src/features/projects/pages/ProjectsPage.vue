@@ -2,10 +2,10 @@
   <section class="projects-page" aria-label="项目管理">
     <PageHeader title="项目管理" breadcrumb="项目管理 / 项目列表">
       <template #actions>
-        <ElButton type="primary" @click="createDialogVisible = true">
+        <AppButton type="primary" @click="createDialogVisible = true">
           <ElIcon><Plus /></ElIcon>
           新建项目
-        </ElButton>
+        </AppButton>
         <ElSegmented
           :model-value="query.view"
           :options="viewOptions"
@@ -32,7 +32,7 @@
     </div>
 
     <FilterBar>
-      <ElInput
+      <AppInput
         :model-value="query.keyword"
         class="project-filter__keyword"
         clearable
@@ -42,7 +42,7 @@
         <template #prefix>
           <ElIcon><Search /></ElIcon>
         </template>
-      </ElInput>
+      </AppInput>
       <ElSelect
         :model-value="query.method"
         clearable
@@ -72,10 +72,10 @@
         <ElOption label="关注" value="attention" />
         <ElOption label="风险" value="risk" />
       </ElSelect>
-      <ElButton plain>
+      <AppButton plain>
         <ElIcon><Filter /></ElIcon>
         高级筛选
-      </ElButton>
+      </AppButton>
     </FilterBar>
 
     <DataTableShell v-if="query.view === 'table'">
@@ -159,9 +159,9 @@
         <ElTableColumn prop="updated_at" label="更新时间" width="150" />
         <ElTableColumn label="操作" width="100" fixed="right">
           <template #default="{ row }: { row: ProjectSummary }">
-            <ElButton link type="primary" @click.stop="openProject(row)">
+            <AppButton link type="primary" @click.stop="openProject(row)">
               查看
-            </ElButton>
+            </AppButton>
           </template>
         </ElTableColumn>
       </ElTable>
@@ -233,6 +233,8 @@ import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  AppButton,
+  AppInput,
   DataTableShell,
   FilterBar,
   PageHeader,

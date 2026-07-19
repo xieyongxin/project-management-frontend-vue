@@ -1,21 +1,23 @@
 <template>
   <ElFormItem :label="hideLabel ? undefined : label" :error="error">
-    <ElInput
+    <AppInput
       v-model="model"
       :type="type"
       :placeholder="placeholder"
       :autocomplete="autocomplete"
       :size="size"
-      :show-password="type === 'password'"
+      :variant="variant"
     >
       <template v-if="$slots.prefix" #prefix>
         <slot name="prefix" />
       </template>
-    </ElInput>
+    </AppInput>
   </ElFormItem>
 </template>
 
 <script setup lang="ts">
+import { AppInput } from '@/shared/components'
+
 withDefaults(
   defineProps<{
     label: string
@@ -24,12 +26,14 @@ withDefaults(
     placeholder?: string | undefined
     autocomplete?: string | undefined
     size?: 'large' | 'default' | 'small'
+    variant?: 'default' | 'auth'
     error?: string | undefined
   }>(),
   {
     hideLabel: false,
     type: 'text',
     size: 'default',
+    variant: 'default',
   },
 )
 

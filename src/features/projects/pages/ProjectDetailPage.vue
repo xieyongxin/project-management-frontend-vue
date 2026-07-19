@@ -26,12 +26,12 @@
           </div>
         </div>
         <div class="project-detail-header__actions">
-          <ElButton plain>项目内搜索</ElButton>
+          <AppButton plain>项目内搜索</AppButton>
           <ElDropdown>
-            <ElButton type="primary">
+            <AppButton type="primary">
               创建工作项
               <ElIcon><ArrowDown /></ElIcon>
-            </ElButton>
+            </AppButton>
             <template #dropdown>
               <ElDropdownMenu>
                 <ElDropdownItem>创建需求</ElDropdownItem>
@@ -190,6 +190,7 @@ import { ArrowDown } from '@element-plus/icons-vue'
 import { computed, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
+  AppButton,
   AsyncPageSkeleton,
   EmptyState,
   PageError,

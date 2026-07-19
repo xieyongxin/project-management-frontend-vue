@@ -12,16 +12,16 @@
 
     <div class="border-divider flex-none border-t p-[var(--space-1)]">
       <ElTooltip v-if="collapsed" content="展开菜单" placement="right">
-        <ElButton
+        <AppButton
           text
           class="w-full"
           :aria-label="collapsed ? '展开菜单' : '收起菜单'"
           @click="emit('toggleCollapse')"
         >
           <ElIcon><Expand /></ElIcon>
-        </ElButton>
+        </AppButton>
       </ElTooltip>
-      <ElButton
+      <AppButton
         v-else
         text
         class="w-full"
@@ -30,13 +30,14 @@
       >
         <ElIcon><Fold /></ElIcon>
         <span>收起菜单</span>
-      </ElButton>
+      </AppButton>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { Expand, Fold } from '@element-plus/icons-vue'
+import { AppButton } from '@/shared/components'
 import type { AppNavigationNode } from '../model/app-layout.types'
 import SidebarLogo from './SidebarLogo.vue'
 import SidebarMenu from './SidebarMenu.vue'

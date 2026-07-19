@@ -1,6 +1,6 @@
 <template>
   <ElDropdown trigger="click" placement="bottom-end" @command="handleCommand">
-    <ElButton
+    <AppButton
       text
       class="h-[var(--control-height-lg)] max-w-64 px-[var(--space-1)]"
       :aria-label="`用户菜单：${user.displayName}`"
@@ -24,7 +24,7 @@
           </ElTooltip>
         </span>
       </span>
-    </ElButton>
+    </AppButton>
 
     <template #dropdown>
       <ElDropdownMenu>
@@ -43,6 +43,7 @@
 <script setup lang="ts">
 import { Loading, SwitchButton } from '@element-plus/icons-vue'
 import { computed } from 'vue'
+import { AppButton } from '@/shared/components'
 import type { AppUserSummary } from '../model/app-layout.types'
 
 const props = defineProps<{

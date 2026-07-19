@@ -1,0 +1,27 @@
+@import './tokens.css';
+
+:root {
+  --app-primary: var(--color-primary);
+  --app-primary-hover: var(--color-primary-hover);
+  --app-text-primary: var(--color-text-primary);
+  --app-text-secondary: var(--color-text-secondary);
+  --app-text-placeholder: var(--color-text-placeholder);
+  --app-border-color: var(--color-border);
+  --app-page-background: var(--color-bg-app);
+
+  --app-input-height: var(--control-height);
+  --app-button-height: var(--control-height);
+
+  --app-radius-sm: var(--radius-sm);
+  --app-radius-md: var(--radius-md);
+  --app-radius-lg: var(--radius-lg);
+
+  --auth-container-max-width: 1400px;
+  --auth-container-gutter: 48px;
+
+  --app-space-xs: var(--space-1);
+  --app-space-sm: var(--space-2);
+  --app-space-md: var(--space-3);
+  --app-space-lg: var(--space-4);
+  --app-space-xl: var(--space-5);
+}

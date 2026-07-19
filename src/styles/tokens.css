@@ -124,26 +124,6 @@
   --auth-card-width: 520px;
   --auth-card-padding-block: 50px;
   --auth-card-padding-inline: 50px;
-  --auth-card-bg: rgba(255, 255, 255, 0.68);
-  --auth-card-border: rgba(184, 197, 215, 0.56);
-  --auth-field-bg: rgba(255, 255, 255, 0.5);
-  --auth-backdrop-blur: 12px;
-  --auth-bg-start: #f8fbff;
-  --auth-bg-middle: #f4f9ff;
-  --auth-bg-end: #eff7ff;
-  --auth-glow-blue: rgba(226, 237, 252, 0.92);
-  --auth-glow-blue-transparent: rgba(226, 237, 252, 0);
-  --auth-glow-cyan: rgba(126, 205, 232, 0.42);
-  --auth-glow-cyan-transparent: rgba(126, 205, 232, 0);
-  --auth-curve-primary: rgba(44, 111, 255, 0.34);
-  --auth-curve-secondary: rgba(84, 155, 255, 0.2);
-  --auth-curve-accent: rgba(38, 197, 189, 0.2);
-  --auth-node-blue: var(--palette-blue-500);
-  --auth-node-green: var(--palette-green-500);
-  --auth-node-purple: #625cf5;
-  --auth-node-orange: #ff8c31;
-  --auth-node-halo: rgba(48, 126, 255, 0.08);
-  --auth-node-shadow: 0 6px 8px rgba(45, 100, 220, 0.16);
 
   /* Layer */
   --opacity-disabled: 0.45;

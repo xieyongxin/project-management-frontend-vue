@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { LoginLayout } from '@/layouts'
 import { ForbiddenPage, NotFoundPage } from './pages/StatusPages'
 
 export const router = createRouter({
@@ -7,14 +6,8 @@ export const router = createRouter({
   routes: [
     {
       path: '/login',
-      component: LoginLayout,
-      children: [
-        {
-          path: '',
-          name: 'Login',
-          component: () => import('@/features/auth/pages/LoginPage.vue'),
-        },
-      ],
+      name: 'Login',
+      component: () => import('@/features/auth/pages/LoginPage.vue'),
     },
     {
       path: '/',

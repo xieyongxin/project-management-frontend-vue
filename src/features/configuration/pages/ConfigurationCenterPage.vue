@@ -55,9 +55,9 @@
             <ElTableColumn prop="updated_at" label="最后修改时间" width="170" />
             <ElTableColumn label="操作" width="120">
               <template #default="{ row }: { row: ProjectTypeConfig }">
-                <ElButton type="primary" link @click="openProjectType(row)">
+                <AppButton type="primary" link @click="openProjectType(row)">
                   配置
-                </ElButton>
+                </AppButton>
               </template>
             </ElTableColumn>
           </ElTable>
@@ -65,18 +65,18 @@
 
         <section v-else-if="activeProjectType" class="configuration-panel">
           <div class="configuration-panel__header">
-            <ElButton plain @click="goProjectTypeList">返回</ElButton>
+            <AppButton plain @click="goProjectTypeList">返回</AppButton>
             <div>
               <h2>{{ activeProjectType.name }}配置</h2>
               <p>启用的前 6 个 Tab 展示在顶部，超过 6 个自动进入“更多”菜单。</p>
             </div>
-            <ElButton
+            <AppButton
               type="primary"
               :loading="saveProjectTypeMutation.isPending.value"
               @click="saveProjectType"
             >
               保存
-            </ElButton>
+            </AppButton>
           </div>
           <ElAlert
             class="mb-[var(--space-2)]"
@@ -112,17 +112,17 @@
           description="配置需求、任务和缺陷默认工作流；保存后只影响后续新建项目。"
         >
           <template #actions>
-            <ElButton :disabled="!activeWorkflow" @click="restoreWorkflow">
+            <AppButton :disabled="!activeWorkflow" @click="restoreWorkflow">
               恢复默认工作流
-            </ElButton>
-            <ElButton
+            </AppButton>
+            <AppButton
               type="primary"
               :disabled="!activeWorkflow"
               :loading="saveWorkflowMutation.isPending.value"
               @click="saveWorkflow"
             >
               保存
-            </ElButton>
+            </AppButton>
           </template>
         </PageHeader>
         <ElTabs v-model="activeWorkflowKey">
@@ -138,7 +138,7 @@
                 <template
                   #default="{ row }: { row: WorkflowConfig['states'][number] }"
                 >
-                  <ElInput v-model="row.name" />
+                  <AppInput v-model="row.name" />
                 </template>
               </ElTableColumn>
               <ElTableColumn label="颜色" width="100">
@@ -296,7 +296,13 @@
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { DataTableShell, PageHeader, StatusTag } from '@/shared/components'
+import {
+  AppButton,
+  AppInput,
+  DataTableShell,
+  PageHeader,
+  StatusTag,
+} from '@/shared/components'
 import {
   useProjectTypeConfigs,
   useRestoreWorkflowDefinition,

@@ -2,7 +2,7 @@
   <div
     class="flex w-full min-w-0 items-center justify-end gap-[var(--space-3)]"
   >
-    <ElInput
+    <AppInput
       class="ml-auto w-full max-w-md"
       clearable
       :aria-label="search?.ariaLabel ?? '全局搜索'"
@@ -11,7 +11,7 @@
       <template #prefix>
         <ElIcon><Search /></ElIcon>
       </template>
-    </ElInput>
+    </AppInput>
 
     <div class="flex flex-none items-center gap-[var(--space-1)]">
       <ElPopover
@@ -22,9 +22,9 @@
       >
         <template #reference>
           <ElBadge :value="notificationCount" :hidden="notificationCount === 0">
-            <ElButton text :aria-label="notificationLabel">
+            <AppButton text :aria-label="notificationLabel">
               <ElIcon><Bell /></ElIcon>
-            </ElButton>
+            </AppButton>
           </ElBadge>
         </template>
         <ElEmpty
@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { Bell, Search } from '@element-plus/icons-vue'
 import { computed } from 'vue'
+import { AppButton, AppInput } from '@/shared/components'
 import type { AppLayoutProps } from '../model/app-layout.types'
 import UserDropdown from './UserDropdown.vue'
 

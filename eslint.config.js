@@ -98,7 +98,7 @@ export default tseslint.config(
             },
             {
               from: { element: { type: 'feature' } },
-              allow: { to: { element: { type: 'shared' } } },
+              allow: { to: { element: { types: ['layout', 'shared'] } } },
             },
             {
               from: { element: { type: 'shared' } },

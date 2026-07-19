@@ -1,8 +1,9 @@
+/* Layout */
 .auth-layout {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  color: var(--color-text-primary);
+  color: var(--app-text-primary);
   background:
     radial-gradient(
       circle at 20% 10%,
@@ -21,7 +22,10 @@
   position: relative;
   z-index: 10;
   display: flex;
-  width: min(1400px, calc(100% - 48px));
+  width: min(
+    var(--auth-container-max-width),
+    calc(100% - var(--auth-container-gutter))
+  );
   min-height: 100vh;
   margin: 0 auto;
   align-items: center;
@@ -37,6 +41,7 @@
   justify-content: center;
 }
 
+/* Content */
 .auth-slogan {
   display: flex;
   width: min(700px, 52vw);
@@ -44,6 +49,21 @@
   justify-content: center;
 }
 
+.auth-hero-title {
+  margin: 0;
+  color: #1f315d;
+  font-size: clamp(44px, 3.35vw, 64px);
+  line-height: 1.5;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0;
+}
+
+.auth-hero-title span {
+  display: block;
+  white-space: nowrap;
+}
+
+/* Background Decoration */
 .auth-background-svg {
   pointer-events: none;
   position: absolute;
@@ -154,45 +174,7 @@
   animation-delay: 2.4s;
 }
 
-/*
- * The following variables remain as compatibility hooks for older auth
- * decorations. The actual login background mirrors UI/login.html above.
- */
-.auth-layout-legacy {
-  background:
-    radial-gradient(
-      circle at 86% 34%,
-      var(--auth-glow-blue) 0,
-      var(--auth-glow-blue-transparent) 31%
-    ),
-    radial-gradient(
-      circle at 100% 100%,
-      var(--auth-glow-cyan) 0,
-      var(--auth-glow-cyan-transparent) 36%
-    ),
-    linear-gradient(
-      128deg,
-      var(--auth-bg-start) 0%,
-      var(--auth-bg-middle) 48%,
-      var(--auth-bg-end) 76%,
-      var(--auth-bg-start) 100%
-    );
-}
-
-.auth-hero-title {
-  margin: 0;
-  color: #1f315d;
-  font-size: clamp(44px, 3.35vw, 64px);
-  line-height: 1.5;
-  font-weight: var(--font-weight-bold);
-  letter-spacing: 0;
-}
-
-.auth-hero-title span {
-  display: block;
-  white-space: nowrap;
-}
-
+/* Animation */
 @keyframes auth-node-pulse {
   0% {
     transform: translate(-50%, -50%) scale(0.8);
@@ -216,6 +198,7 @@
   }
 }
 
+/* Responsive */
 @media (max-width: 1200px) {
   .auth-container {
     gap: 40px;
@@ -240,10 +223,11 @@
   :root {
     --auth-card-padding-block: 48px;
     --auth-card-padding-inline: 24px;
+    --auth-container-gutter: 32px;
   }
 
   .auth-container {
-    width: min(100% - 32px, 520px);
+    width: min(100% - var(--auth-container-gutter), 520px);
     min-height: 100svh;
   }
 

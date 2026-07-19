@@ -61,10 +61,10 @@
     <section v-else class="create-project-form">
       <ElForm label-position="top">
         <ElFormItem label="项目名称" required :error="errors.name">
-          <ElInput v-model="form.name" placeholder="请输入项目名称" />
+          <AppInput v-model="form.name" placeholder="请输入项目名称" />
         </ElFormItem>
         <ElFormItem label="项目标识" required :error="errors.identifier">
-          <ElInput v-model="form.identifier" placeholder="如 PRJ-I-001" />
+          <AppInput v-model="form.identifier" placeholder="如 PRJ-I-001" />
         </ElFormItem>
         <ElFormItem label="项目负责人" required>
           <ElSelect v-model="form.ownerId" class="w-full">
@@ -83,7 +83,7 @@
           </ElRadioGroup>
         </ElFormItem>
         <ElFormItem label="项目描述">
-          <ElInput
+          <AppInput
             v-model="form.description"
             type="textarea"
             :rows="4"
@@ -107,15 +107,15 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <ElButton v-if="step === 2" @click="step = 1">上一步</ElButton>
+        <AppButton v-if="step === 2" @click="step = 1">上一步</AppButton>
         <span class="flex-1" />
-        <ElButton @click="close">取消</ElButton>
-        <ElButton v-if="step === 1" type="primary" @click="step = 2">
+        <AppButton @click="close">取消</AppButton>
+        <AppButton v-if="step === 1" type="primary" @click="step = 2">
           下一步
-        </ElButton>
-        <ElButton v-else type="primary" :loading="submitting" @click="submit">
+        </AppButton>
+        <AppButton v-else type="primary" :loading="submitting" @click="submit">
           创建项目
-        </ElButton>
+        </AppButton>
       </div>
     </template>
   </ElDialog>
@@ -124,6 +124,7 @@
 <script setup lang="ts">
 import { DataBoard, Finished } from '@element-plus/icons-vue'
 import { computed, reactive, ref, watch } from 'vue'
+import { AppButton, AppInput } from '@/shared/components'
 import type { ProjectCreatePayload } from '../model/project.types'
 
 const props = defineProps<{
