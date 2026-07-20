@@ -6,6 +6,7 @@ export const projectKeys = {
     [...projectKeys.all, 'list', query] as const,
   stats: (query: ProjectListQuery) =>
     [...projectKeys.all, 'stats', query] as const,
+  createTemplate: () => [...projectKeys.all, 'create-template'] as const,
   detail: (id: string) => [...projectKeys.all, 'detail', id] as const,
   navigation: (id: string) =>
     [...projectKeys.detail(id), 'navigation'] as const,

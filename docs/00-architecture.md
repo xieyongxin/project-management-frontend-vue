@@ -10,6 +10,8 @@
 - Pinia 只保存侧栏折叠等客户端 UI 偏好。
 - Axios + Orval 负责 OpenAPI 契约生成和 HTTP 调用。
 - Element Plus 负责企业级交互组件，Tailwind 负责布局、间距和自研展示组件。
+- 项目类型排序使用 SortableJS；默认工作流只读图预览使用 Vue Flow。
+- 运行时不保留 MSW/mock 数据入口；业务数据、项目创建模板、负责人候选人和配置项均以后端接口为准。
 
 ## 目录边界
 
@@ -52,6 +54,12 @@ feature 之间禁止直接依赖。跨领域流程由 router/app 组合，真正
 - `GET /auth/csrf`
 - `GET /auth/wecom/authorize`
 - `GET /auth/wecom/callback`
+
+企业微信登录在页面内展示扫码体验。当前阶段按正式授权 URL、二维码 URL、state 和 callback 链路实现，第三方 code/userid 校验由后端模拟通过并映射到已有用户。
+
+## 当前业务边界
+
+已实现页面以“登录、工作台、项目管理、项目详情概要、配置中心”为验收边界。项目管理与配置中心不在前端构造项目类型、负责人、流程模板或工作流候选项；新建项目读取 `/projects/create-template`，项目类型筛选读取后端项目类型模板，配置保存只影响后续新建项目。
 
 ## ADR 索引
 

@@ -5,8 +5,10 @@
       :initial-remember-email="Boolean(rememberedEmail)"
       :email-loading="loginMutation.isPending.value"
       :wecom-loading="wecomAuthorizeMutation.isPending.value"
+      :wecom-target="wecomTarget"
       :error-message="errorMessage"
       @submit="handleEmailLogin"
+      @refresh-wecom="loadWecomTarget"
       @wecom-login="startWecomLogin"
       @reset-help="showResetHelp"
     />
@@ -19,13 +21,14 @@
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AuthLayout } from '@/layouts'
 import { AppError } from '@/shared/api'
 import AuthHero from '../components/AuthHero.vue'
 import LoginForm from '../components/LoginForm.vue'
 import { useLogin, useWecomAuthorize } from '../composables/auth.queries'
+import type { WecomAuthorizeResponse } from '../model/current-user'
 import { resolveSafeReturnTo } from '../model/return-to'
 import type { LoginCredentials } from '../model/login.schema'
 
@@ -34,6 +37,7 @@ const router = useRouter()
 const route = useRoute()
 const loginMutation = useLogin()
 const wecomAuthorizeMutation = useWecomAuthorize()
+const wecomTarget = ref<WecomAuthorizeResponse>()
 const rememberedEmail =
   window.localStorage.getItem(rememberedEmailStorageKey) ?? ''
 const errorMessage = computed(() => {
@@ -48,16 +52,26 @@ const errorMessage = computed(() => {
 
 onMounted(() => {
   document.title = '登录 · 项目协作工作台'
+  void loadWecomTarget()
 })
 
-const startWecomLogin = async () => {
+const loadWecomTarget = async () => {
   try {
-    const authorizeUrl = await wecomAuthorizeMutation.mutateAsync(
+    wecomTarget.value = await wecomAuthorizeMutation.mutateAsync(
       resolveSafeReturnTo(route.query.returnTo),
     )
-    window.location.assign(authorizeUrl)
   } catch {
-    ElMessage.error('企业微信授权地址获取失败，请稍后重试。')
+    ElMessage.error('企业微信扫码入口获取失败，请稍后重试。')
+  }
+}
+
+const startWecomLogin = async () => {
+  if (!wecomTarget.value) {
+    await loadWecomTarget()
+  }
+
+  if (wecomTarget.value?.authorize_url) {
+    window.location.assign(wecomTarget.value.authorize_url)
   }
 }
 

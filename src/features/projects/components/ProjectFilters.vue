@@ -41,11 +41,14 @@
 
 <script setup lang="ts">
 import { Filter, Search } from '@element-plus/icons-vue'
+import { computed } from 'vue'
 import { AppButton, AppInput, AppSelect, FilterBar } from '@/shared/components'
 import type { ProjectListQuery } from '../model/project-list-query'
+import type { ProjectTemplateType } from '../model/project.types'
 
-defineProps<{
+const props = defineProps<{
   query: ProjectListQuery
+  projectTypes?: ProjectTemplateType[]
 }>()
 
 const emit = defineEmits<{
@@ -55,10 +58,13 @@ const emit = defineEmits<{
   riskStatusChange: [value: unknown]
 }>()
 
-const methodOptions = [
-  { label: 'Scrum', value: 'scrum' },
-  { label: 'Waterfall', value: 'waterfall' },
-]
+const methodOptions = computed(
+  () =>
+    props.projectTypes?.map((item) => ({
+      label: item.name,
+      value: item.method,
+    })) ?? [],
+)
 const statusOptions = [
   { label: '进行中', value: 'active' },
   { label: '暂停', value: 'paused' },
@@ -74,5 +80,9 @@ const riskStatusOptions = [
 <style scoped>
 .project-filter__keyword {
   width: 300px;
+}
+
+:deep(.app-select) {
+  width: 180px;
 }
 </style>

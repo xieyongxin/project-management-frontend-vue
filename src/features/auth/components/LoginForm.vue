@@ -42,14 +42,27 @@
         role="tabpanel"
         aria-label="企业微信扫码登录"
       >
-        <div class="wecom-qr" aria-hidden="true">
-          <div class="wecom-qr-mark">
+        <div class="wecom-qr" aria-label="企业微信登录二维码">
+          <iframe
+            v-if="canEmbedQr"
+            class="wecom-qr__frame"
+            :src="wecomTarget?.qr_code_url"
+            title="企业微信扫码登录"
+          />
+          <div v-if="!canEmbedQr" class="wecom-qr-mark">
             <ElIcon><Connection /></ElIcon>
           </div>
         </div>
         <p class="login-hint">
-          使用企业微信扫码完成统一身份认证。若当前浏览器无法唤起扫码，请打开授权入口继续。
+          使用企业微信扫码完成统一身份认证。当前阶段按正式回调形态接入，第三方身份校验由后端模拟通过。
         </p>
+        <AppButton
+          class="login-secondary-button"
+          :loading="wecomLoading"
+          @click="emit('refreshWecom')"
+        >
+          刷新二维码
+        </AppButton>
         <AppButton
           class="login-submit-button"
           type="primary"
@@ -58,7 +71,7 @@
           :loading="wecomLoading"
           @click="emit('wecomLogin')"
         >
-          打开扫码授权
+          {{ canEmbedQr ? '打开授权入口' : '完成扫码登录' }}
         </AppButton>
       </section>
 
@@ -132,8 +145,9 @@
 
 <script setup lang="ts">
 import { Connection, Lock, Message } from '@element-plus/icons-vue'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { AppButton, BrandMark } from '@/shared/components'
+import type { WecomAuthorizeResponse } from '../model/current-user'
 import { FormTextField } from '@/shared/form'
 import { loginSchema, type LoginCredentials } from '../model/login.schema'
 
@@ -143,6 +157,7 @@ const props = withDefaults(
     initialRememberEmail?: boolean
     emailLoading?: boolean
     wecomLoading?: boolean
+    wecomTarget?: WecomAuthorizeResponse | undefined
     errorMessage?: string | undefined
   }>(),
   {
@@ -150,12 +165,14 @@ const props = withDefaults(
     initialRememberEmail: false,
     emailLoading: false,
     wecomLoading: false,
+    wecomTarget: undefined,
     errorMessage: undefined,
   },
 )
 
 const emit = defineEmits<{
   submit: [payload: { credentials: LoginCredentials; rememberEmail: boolean }]
+  refreshWecom: []
   wecomLogin: []
   resetHelp: []
 }>()
@@ -172,6 +189,10 @@ const fieldErrors = reactive<
   email: undefined,
   password: undefined,
 })
+
+const canEmbedQr = computed(() =>
+  props.wecomTarget?.qr_code_url?.startsWith('https://open.work.weixin.qq.com'),
+)
 
 const validateForm = () => {
   fieldErrors.email = undefined
@@ -284,6 +305,7 @@ const submitEmailLogin = () => {
 }
 
 .wecom-qr {
+  position: relative;
   display: grid;
   width: 212px;
   height: 212px;
@@ -299,9 +321,21 @@ const submitEmailLogin = () => {
       14px,
     #ffffff;
   box-shadow: 0 14px 34px rgba(24, 76, 166, 0.08);
+  overflow: hidden;
+}
+
+.wecom-qr__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #ffffff;
 }
 
 .wecom-qr-mark {
+  position: relative;
+  z-index: 1;
   display: grid;
   width: 72px;
   height: 72px;
@@ -336,6 +370,10 @@ const submitEmailLogin = () => {
 
 .login-submit-button {
   margin-top: 32px;
+}
+
+.login-secondary-button {
+  margin-top: 20px;
 }
 
 .login-hint {

@@ -18,6 +18,7 @@
         </AppButton>
       </template>
     </PageHeader>
+
     <ElTabs
       :model-value="activeWorkflowKey"
       @update:model-value="handleWorkflowKeyChange"
@@ -26,25 +27,29 @@
       <ElTabPane label="任务" name="task" />
       <ElTabPane label="缺陷" name="defect" />
     </ElTabs>
+
     <div v-if="activeWorkflow" class="workflow-grid">
-      <section class="configuration-panel">
-        <h2>状态列表</h2>
+      <section class="configuration-panel workflow-editor">
+        <div class="panel-title-row">
+          <h2>状态列表</h2>
+          <AppButton plain @click="emit('addState')">新增状态</AppButton>
+        </div>
         <ElTable :data="activeWorkflow.states">
-          <ElTableColumn prop="name" label="状态名称">
+          <ElTableColumn prop="name" label="状态名称" min-width="150">
             <template
               #default="{ row }: { row: WorkflowConfig['states'][number] }"
             >
               <AppInput v-model="row.name" />
             </template>
           </ElTableColumn>
-          <ElTableColumn label="颜色" width="100">
+          <ElTableColumn label="颜色" width="96">
             <template
               #default="{ row }: { row: WorkflowConfig['states'][number] }"
             >
               <ElColorPicker v-model="row.color" />
             </template>
           </ElTableColumn>
-          <ElTableColumn label="起始" width="90">
+          <ElTableColumn label="起始" width="88">
             <template
               #default="{ row }: { row: WorkflowConfig['states'][number] }"
             >
@@ -55,32 +60,55 @@
               />
             </template>
           </ElTableColumn>
-          <ElTableColumn label="终态" width="90">
+          <ElTableColumn label="终态" width="88">
             <template
               #default="{ row }: { row: WorkflowConfig['states'][number] }"
             >
               <ElSwitch v-model="row.terminal" />
             </template>
           </ElTableColumn>
+          <ElTableColumn label="操作" width="88">
+            <template
+              #default="{ row }: { row: WorkflowConfig['states'][number] }"
+            >
+              <AppButton
+                link
+                type="danger"
+                @click="confirmDeleteState(row.state_key)"
+              >
+                删除
+              </AppButton>
+            </template>
+          </ElTableColumn>
         </ElTable>
 
-        <h2 class="mt-[var(--space-3)]">流转列表</h2>
+        <div class="panel-title-row mt-[var(--space-3)]">
+          <h2>流转列表</h2>
+          <AppButton plain @click="emit('addTransition')">新增流转</AppButton>
+        </div>
         <ElTable :data="activeWorkflow.transitions">
-          <ElTableColumn label="源状态">
+          <ElTableColumn label="名称" min-width="150">
+            <template
+              #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
+            >
+              <AppInput v-model="row.name" />
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="源状态" min-width="150">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
               <AppSelect v-model="row.from_state_key" :options="stateOptions" />
             </template>
           </ElTableColumn>
-          <ElTableColumn label="目标状态">
+          <ElTableColumn label="目标状态" min-width="150">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
               <AppSelect v-model="row.to_state_key" :options="stateOptions" />
             </template>
           </ElTableColumn>
-          <ElTableColumn label="允许角色">
+          <ElTableColumn label="允许角色" min-width="180">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
@@ -92,11 +120,40 @@
               />
             </template>
           </ElTableColumn>
-          <ElTableColumn label="需评论" width="90">
+          <ElTableColumn label="需评论" width="88">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
               <ElSwitch v-model="row.require_comment" />
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="通知" width="92">
+            <template
+              #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
+            >
+              <AppButton link @click="openNotifyDialog(row)">
+                {{ row.notify_enabled ? '已启用' : '配置' }}
+              </AppButton>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="Webhook" width="104">
+            <template
+              #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
+            >
+              <AppButton link @click="openWebhookDialog(row)">
+                {{ row.webhook_enabled ? '已启用' : '配置' }}
+              </AppButton>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="操作" width="88">
+            <template #default="{ $index }: { $index: number }">
+              <AppButton
+                link
+                type="danger"
+                @click="emit('deleteTransition', $index)"
+              >
+                删除
+              </AppButton>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -104,18 +161,82 @@
 
       <aside class="configuration-panel workflow-preview">
         <h2>流程预览（只读）</h2>
-        <ol>
-          <li v-for="state in activeWorkflow.states" :key="state.state_key">
-            <span :style="{ borderColor: state.color }">{{ state.name }}</span>
-          </li>
-        </ol>
+        <VueFlow
+          class="workflow-flow"
+          :nodes="flowNodes"
+          :edges="flowEdges"
+          :nodes-draggable="false"
+          :nodes-connectable="false"
+          :elements-selectable="false"
+          :pan-on-drag="false"
+          :zoom-on-scroll="false"
+          fit-view-on-init
+        />
       </aside>
     </div>
+
+    <ElDialog v-model="notifyDialogVisible" width="520px" title="通知配置">
+      <ElForm
+        v-if="editingTransition"
+        label-position="left"
+        label-width="112px"
+      >
+        <ElFormItem label="启用通知">
+          <ElSwitch v-model="editingTransition.notify_enabled" />
+        </ElFormItem>
+        <ElFormItem label="接收规则">
+          <AppInput v-model="editingTransition.notify_rule" />
+        </ElFormItem>
+        <ElFormItem label="文案模板">
+          <AppInput
+            v-model="editingTransition.notify_template"
+            type="textarea"
+            :rows="4"
+          />
+        </ElFormItem>
+      </ElForm>
+      <template #footer>
+        <AppButton type="primary" @click="notifyDialogVisible = false">
+          确定
+        </AppButton>
+      </template>
+    </ElDialog>
+
+    <ElDialog v-model="webhookDialogVisible" width="520px" title="Webhook 配置">
+      <ElForm
+        v-if="editingTransition"
+        label-position="left"
+        label-width="112px"
+      >
+        <ElFormItem label="启用 Webhook">
+          <ElSwitch v-model="editingTransition.webhook_enabled" />
+        </ElFormItem>
+        <ElFormItem label="Webhook URL">
+          <AppInput v-model="editingTransition.webhook_url" />
+        </ElFormItem>
+        <ElFormItem label="Secret 状态">
+          <ElSwitch
+            v-model="editingTransition.webhook_secret_set"
+            active-text="已配置"
+            inactive-text="未配置"
+          />
+        </ElFormItem>
+      </ElForm>
+      <template #footer>
+        <AppButton type="primary" @click="webhookDialogVisible = false">
+          确定
+        </AppButton>
+      </template>
+    </ElDialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import '@vue-flow/core/dist/style.css'
+import '@vue-flow/core/dist/theme-default.css'
+import { VueFlow, type Edge, type Node } from '@vue-flow/core'
+import { ElMessageBox } from 'element-plus'
+import { computed, ref } from 'vue'
 import { AppButton, AppInput, AppSelect, PageHeader } from '@/shared/components'
 import type { RoleConfig, WorkflowConfig } from '../model/configuration.types'
 
@@ -129,9 +250,19 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:activeWorkflowKey': [value: string]
   setInitial: [stateKey: string]
+  addState: []
+  deleteState: [stateKey: string]
+  addTransition: []
+  deleteTransition: [index: number]
   restore: []
   save: []
 }>()
+
+type WorkflowTransition = WorkflowConfig['transitions'][number]
+
+const notifyDialogVisible = ref(false)
+const webhookDialogVisible = ref(false)
+const editingTransition = ref<WorkflowTransition>()
 
 const stateOptions = computed(
   () =>
@@ -146,6 +277,73 @@ const roleOptions = computed(() =>
     value: role.role_key,
   })),
 )
+
+const flowNodes = computed<Node[]>(() =>
+  (props.activeWorkflow?.states ?? []).map((state, index) => ({
+    id: state.state_key,
+    label: state.name,
+    position: {
+      x: index % 2 === 0 ? 40 : 220,
+      y: index * 86,
+    },
+    style: {
+      border: `2px solid ${state.color}`,
+      background: `${state.color}18`,
+      color: state.color,
+      borderRadius: '8px',
+      fontWeight: 600,
+      width: '150px',
+    },
+  })),
+)
+
+const flowEdges = computed<Edge[]>(() =>
+  (props.activeWorkflow?.transitions ?? []).map((transition) => ({
+    id: transition.transition_key,
+    source: transition.from_state_key,
+    target: transition.to_state_key,
+    label: transition.name,
+    type: 'smoothstep',
+    markerEnd: 'arrowclosed',
+    animated: false,
+  })),
+)
+
+const confirmDeleteState = async (stateKey: string) => {
+  if (!props.activeWorkflow) {
+    return
+  }
+
+  const relatedCount = props.activeWorkflow.transitions.filter(
+    (transition) =>
+      transition.from_state_key === stateKey ||
+      transition.to_state_key === stateKey,
+  ).length
+
+  if (relatedCount > 0) {
+    await ElMessageBox.confirm(
+      `删除该状态会同时删除 ${relatedCount} 条相关流转，是否继续？`,
+      '确认删除状态',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+      },
+    )
+  }
+
+  emit('deleteState', stateKey)
+}
+
+const openNotifyDialog = (transition: WorkflowTransition) => {
+  editingTransition.value = transition
+  notifyDialogVisible.value = true
+}
+
+const openWebhookDialog = (transition: WorkflowTransition) => {
+  editingTransition.value = transition
+  webhookDialogVisible.value = true
+}
 
 const handleWorkflowKeyChange = (value: string | number) => {
   emit('update:activeWorkflowKey', String(value))
@@ -182,23 +380,38 @@ const handleWorkflowKeyChange = (value: string | number) => {
 
 .workflow-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 420px;
   gap: var(--space-2);
+  align-items: start;
 }
 
-.workflow-preview ol {
-  display: grid;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
+.workflow-editor {
+  min-width: 0;
 }
 
-.workflow-preview span {
-  display: block;
-  padding: var(--space-1) var(--space-2);
-  text-align: center;
-  border: 2px solid var(--color-border);
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.workflow-preview {
+  min-height: 560px;
+}
+
+.workflow-flow {
+  height: 500px;
+  margin-top: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+}
+
+@media (max-width: 1180px) {
+  .workflow-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

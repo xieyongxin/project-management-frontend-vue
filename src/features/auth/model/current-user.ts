@@ -6,3 +6,5 @@ export interface CurrentUser {
   permissions: ReadonlySet<string>
   lastLoginAt: Date
 }
+
+export type { WecomAuthorizeResponse } from '@/shared/api/generated/models'

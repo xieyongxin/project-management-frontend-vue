@@ -7,11 +7,16 @@
 
 export interface WorkflowTransitionDto {
   transition_key: string
+  name: string
   from_state_key: string
   to_state_key: string
   allowed_role_keys: string[]
   require_comment: boolean
   notify_enabled: boolean
+  notify_rule: string
+  notify_template: string
   webhook_enabled: boolean
+  webhook_url: string
+  webhook_secret_set: boolean
   sort_order: number
 }

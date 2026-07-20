@@ -5,9 +5,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface UserLiteDto {
-  id: string
-  display_name: string
-  email: string
-  avatar_url: string
+export interface ProjectFlowNodeDto {
+  key: string
+  name: string
+  color: string
+  sort_order: number
 }

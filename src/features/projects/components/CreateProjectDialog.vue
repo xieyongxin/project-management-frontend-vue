@@ -14,8 +14,19 @@
     <section v-if="step === 1" class="create-project-step">
       <aside class="flow-preview">
         <h3>流程预览</h3>
-        <ol>
-          <li v-for="item in activeFlow" :key="item">{{ item }}</li>
+        <ElSkeleton v-if="templateLoading" :rows="6" animated />
+        <ol v-else class="flow-preview__nodes">
+          <li v-for="(item, index) in activeFlow" :key="item.key">
+            <span class="flow-preview__node" :style="flowNodeStyle(item)">
+              {{ item.name }}
+            </span>
+            <span
+              v-if="index < activeFlow.length - 1"
+              class="flow-preview__arrow"
+            >
+              →
+            </span>
+          </li>
         </ol>
       </aside>
 
@@ -25,28 +36,18 @@
         <div class="project-type-picker__grid">
           <button
             v-for="option in projectTypeOptions"
-            :key="option.value"
+            :key="option.type_key"
             class="project-type-card"
-            :class="{ 'is-active': form.method === option.value }"
+            :class="{ 'is-active': form.method === option.method }"
             type="button"
-            @click="form.method = option.value"
+            @click="form.method = option.method"
           >
-            <ElRadio :model-value="form.method" :value="option.value" />
-            <ElIcon><component :is="option.icon" /></ElIcon>
-            <strong>{{ option.title }}</strong>
+            <ElRadio :model-value="form.method" :value="option.method" />
+            <ElIcon><DataBoard /></ElIcon>
+            <strong>{{ option.name }}</strong>
             <span>{{ option.description }}</span>
             <em>默认最新版本</em>
           </button>
-        </div>
-
-        <div class="enabled-tabs">
-          <span
-            v-for="tab in enabledTabs"
-            :key="tab"
-            class="enabled-tabs__item"
-          >
-            {{ tab }}
-          </span>
         </div>
 
         <ElAlert
@@ -59,15 +60,23 @@
     </section>
 
     <section v-else class="create-project-form">
-      <ElForm label-position="top">
+      <ElForm
+        class="create-project-main-form"
+        label-position="left"
+        label-width="104px"
+      >
         <ElFormItem label="项目名称" required :error="errors.name">
           <AppInput v-model="form.name" placeholder="请输入项目名称" />
         </ElFormItem>
         <ElFormItem label="项目标识" required :error="errors.identifier">
           <AppInput v-model="form.identifier" placeholder="如 PRJ-I-001" />
         </ElFormItem>
-        <ElFormItem label="项目负责人" required>
-          <AppSelect v-model="form.ownerId" :options="ownerOptions" />
+        <ElFormItem label="项目负责人" required :error="errors.ownerId">
+          <AppSelect
+            v-model="form.ownerId"
+            :options="ownerOptions"
+            :loading="templateLoading"
+          />
         </ElFormItem>
         <ElFormItem label="可见性" required>
           <ElRadioGroup v-model="form.visibility">
@@ -115,13 +124,20 @@
 </template>
 
 <script setup lang="ts">
-import { DataBoard, Finished } from '@element-plus/icons-vue'
+import { DataBoard } from '@element-plus/icons-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { AppButton, AppInput, AppSelect } from '@/shared/components'
-import type { ProjectCreatePayload } from '../model/project.types'
+import type {
+  ProjectCreatePayload,
+  ProjectCreateTemplate,
+  ProjectFlowNode,
+  ProjectTemplateType,
+} from '../model/project.types'
 
 const props = defineProps<{
   modelValue: boolean
+  template: ProjectCreateTemplate
+  templateLoading?: boolean
   submitting?: boolean
 }>()
 
@@ -144,81 +160,90 @@ const form = reactive<CreateProjectForm>({
   method: 'scrum',
   name: '',
   identifier: '',
-  ownerId: 'user-demo-001',
+  ownerId: '',
   visibility: 'private',
   description: '',
 })
 const errors = reactive({
   name: '',
   identifier: '',
+  ownerId: '',
 })
 
-const projectTypeOptions = [
-  {
-    value: 'scrum',
-    title: 'Scrum',
-    description: '适用于敏捷迭代团队，强调短周期迭代与持续交付',
-    icon: DataBoard,
-  },
-  {
-    value: 'waterfall',
-    title: 'Waterfall',
-    description: '适用于需求明确、阶段性推进的项目管理',
-    icon: Finished,
-  },
-] as const
-
-const scrumFlow = [
-  '需求池',
-  '迭代规划',
-  '任务拆解',
-  '看板流转',
-  '测试验证',
-  '验收/回顾',
-  '发布',
-]
-const waterfallFlow = ['需求', '设计', '开发', '测试', '验收', '发布']
-const ownerOptions = [
-  { label: '张思远', value: 'user-demo-001' },
-  { label: '李明', value: 'user-002' },
-  { label: '王晓蕾', value: 'user-003' },
-  { label: '赵天宇', value: 'user-004' },
-]
 const tips = [
   '项目标识创建后通常不可修改',
   '负责人必须为有效用户',
   '可见性会影响公司内访问范围',
 ]
 
-const activeFlow = computed(() =>
-  form.method === 'scrum' ? scrumFlow : waterfallFlow,
+const projectTypeOptions = computed(() => props.template.project_types)
+const ownerOptions = computed(() =>
+  props.template.owners.map((owner) => ({
+    label: owner.display_name,
+    value: owner.id,
+  })),
 )
-const enabledTabs = computed(() =>
-  form.method === 'scrum'
-    ? ['概览', '需求', '任务', '缺陷', '迭代', '版本', '测试', '成员', '动态']
-    : ['概览', '需求', '任务', '缺陷', '阶段', '版本', '测试', '成员', '动态'],
+const activeProjectType = computed<ProjectTemplateType | undefined>(() =>
+  projectTypeOptions.value.find((item) => item.method === form.method),
+)
+const activeFlow = computed(() =>
+  [...(activeProjectType.value?.flow_nodes ?? [])].sort(
+    (left, right) => left.sort_order - right.sort_order,
+  ),
 )
 
 watch(
-  () => props.modelValue,
-  (visible) => {
-    if (visible) {
-      step.value = 1
-      errors.name = ''
-      errors.identifier = ''
+  () =>
+    [
+      props.modelValue,
+      props.template.project_types,
+      props.template.owners,
+    ] as const,
+  ([visible]) => {
+    if (!visible) {
+      return
     }
+
+    const firstType = props.template.project_types[0]
+    const firstOwner = props.template.owners[0]
+
+    if (
+      firstType &&
+      !props.template.project_types.some((item) => item.method === form.method)
+    ) {
+      form.method = firstType.method
+    }
+
+    if (
+      firstOwner &&
+      !props.template.owners.some((item) => item.id === form.ownerId)
+    ) {
+      form.ownerId = firstOwner.id
+    }
+
+    step.value = 1
+    errors.name = ''
+    errors.identifier = ''
+    errors.ownerId = ''
   },
 )
 
 const close = () => emit('update:modelValue', false)
+
+const flowNodeStyle = (node: ProjectFlowNode) => ({
+  borderColor: node.color,
+  backgroundColor: `${node.color}18`,
+  color: node.color,
+})
 
 const validate = () => {
   errors.name = form.name.trim() ? '' : '项目名称不能为空。'
   errors.identifier = /^[A-Z0-9-]{2,16}$/.test(form.identifier.trim())
     ? ''
     : '建议 2-16 位大写字母、数字或短横线。'
+  errors.ownerId = form.ownerId ? '' : '请选择项目负责人。'
 
-  return !errors.name && !errors.identifier
+  return !errors.name && !errors.identifier && !errors.ownerId
 }
 
 const submit = () => {
@@ -241,9 +266,16 @@ const submit = () => {
 .create-project-step,
 .create-project-form {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
   gap: var(--space-3);
   min-height: 480px;
+}
+
+.create-project-step {
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+
+.create-project-form {
+  grid-template-columns: minmax(0, 1fr) 280px;
 }
 
 .flow-preview,
@@ -260,12 +292,41 @@ const submit = () => {
   font-size: var(--font-size-title-sm);
 }
 
-.flow-preview ol {
+.flow-preview__nodes {
   display: grid;
-  gap: var(--space-1);
+  gap: 8px;
   margin: var(--space-2) 0 0;
-  padding-left: 20px;
-  color: var(--color-text-secondary);
+  padding: 0;
+  list-style: none;
+}
+
+.flow-preview__nodes li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 6px;
+}
+
+.flow-preview__nodes li:last-child {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.flow-preview__node {
+  min-width: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.flow-preview__arrow {
+  color: var(--color-text-muted);
+  font-size: 18px;
+  text-align: center;
 }
 
 .project-type-picker > p {
@@ -330,20 +391,6 @@ const submit = () => {
   border-radius: var(--radius-md);
 }
 
-.enabled-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin: var(--space-2) 0;
-}
-
-.enabled-tabs__item {
-  padding: 6px 10px;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-subtle);
-  border-radius: var(--radius-sm);
-}
-
 .create-project-tips {
   display: grid;
   align-content: start;
@@ -361,5 +408,12 @@ const submit = () => {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+@media (max-width: 900px) {
+  .create-project-step,
+  .create-project-form {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

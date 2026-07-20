@@ -4,6 +4,7 @@ import { computed, toValue } from 'vue'
 import {
   createProject,
   getProject,
+  getProjectCreateTemplate,
   getProjectNavigation,
   getProjectOverview,
   getProjectStats,
@@ -24,6 +25,12 @@ export const useProjectStats = (query: MaybeRefOrGetter<ProjectListQuery>) =>
   useQuery({
     queryKey: computed(() => projectKeys.stats(toValue(query))),
     queryFn: () => getProjectStats(toProjectRequestParams(toValue(query))),
+  })
+
+export const useProjectCreateTemplate = () =>
+  useQuery({
+    queryKey: projectKeys.createTemplate(),
+    queryFn: getProjectCreateTemplate,
   })
 
 export const useProject = (projectId: MaybeRefOrGetter<string>) =>

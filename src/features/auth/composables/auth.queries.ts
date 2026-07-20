@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { authKeys } from '../api/auth.keys'
 import {
   fetchCurrentUser,
-  getWecomAuthorizeUrl,
+  getWecomAuthorizeTarget,
   loginWithEmergencyCredentials,
   logoutCurrentUser,
 } from '../api/auth.service'
@@ -26,7 +26,7 @@ export const useLogin = () => {
 
 export const useWecomAuthorize = () =>
   useMutation({
-    mutationFn: getWecomAuthorizeUrl,
+    mutationFn: getWecomAuthorizeTarget,
   })
 
 export const useLogout = () => {

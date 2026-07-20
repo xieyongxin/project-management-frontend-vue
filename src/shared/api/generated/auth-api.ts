@@ -15,6 +15,7 @@ import type {
   GetWecomCallbackParams,
   LoginRequest,
   ProjectCreateRequest,
+  ProjectCreateTemplateDto,
   ProjectDto,
   ProjectListResponse,
   ProjectListStatsDto,
@@ -27,6 +28,7 @@ import type {
   RoleDto,
   RoleUpdate,
   TodoItemDto,
+  UserLiteDto,
   WecomAuthorizeResponse,
   WorkflowDto,
   WorkflowUpdate,
@@ -81,6 +83,12 @@ export const getCurrentUser = (
   options?: SecondParameter<typeof apiClient<CurrentUserDto>>,
 ) => {
   return apiClient<CurrentUserDto>({ url: `/me`, method: 'GET' }, options)
+}
+
+export const getUsers = (
+  options?: SecondParameter<typeof apiClient<UserLiteDto[]>>,
+) => {
+  return apiClient<UserLiteDto[]>({ url: `/users`, method: 'GET' }, options)
 }
 
 export const getCsrfToken = (
@@ -277,6 +285,15 @@ export const createProject = (
   )
 }
 
+export const getProjectCreateTemplate = (
+  options?: SecondParameter<typeof apiClient<ProjectCreateTemplateDto>>,
+) => {
+  return apiClient<ProjectCreateTemplateDto>(
+    { url: `/projects/create-template`, method: 'GET' },
+    options,
+  )
+}
+
 export const getProjectStats = (
   params?: GetProjectStatsParams,
   options?: SecondParameter<typeof apiClient<ProjectListStatsDto>>,
@@ -330,6 +347,7 @@ export type LogoutResult = NonNullable<Awaited<ReturnType<typeof logout>>>
 export type GetCurrentUserResult = NonNullable<
   Awaited<ReturnType<typeof getCurrentUser>>
 >
+export type GetUsersResult = NonNullable<Awaited<ReturnType<typeof getUsers>>>
 export type GetCsrfTokenResult = NonNullable<
   Awaited<ReturnType<typeof getCsrfToken>>
 >
@@ -377,6 +395,9 @@ export type GetProjectsResult = NonNullable<
 >
 export type CreateProjectResult = NonNullable<
   Awaited<ReturnType<typeof createProject>>
+>
+export type GetProjectCreateTemplateResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectCreateTemplate>>
 >
 export type GetProjectStatsResult = NonNullable<
   Awaited<ReturnType<typeof getProjectStats>>

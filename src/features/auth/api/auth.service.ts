@@ -20,12 +20,10 @@ export const fetchCurrentUser = async () => {
   return mapCurrentUser(dto)
 }
 
-export const getWecomAuthorizeUrl = async (returnTo?: string) => {
-  const response = await getWecomAuthorize({
+export const getWecomAuthorizeTarget = async (returnTo?: string) => {
+  return getWecomAuthorize({
     redirect_uri: returnTo ?? window.location.origin,
   })
-
-  return response.authorize_url
 }
 
 export const loginWithEmergencyCredentials = async (

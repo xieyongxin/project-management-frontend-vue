@@ -57,30 +57,40 @@
         :closable="false"
         title="保存后只影响后续新建项目，不影响已有项目。"
       />
-      <ElTable :data="activeProjectType.tabs">
-        <ElTableColumn label="拖拽" width="80">
-          <template #default>
-            <span class="drag-handle">⋮⋮</span>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="name" label="Tab 名称" />
-        <ElTableColumn label="是否启用" width="120">
-          <template
-            #default="{ row }: { row: ProjectTypeConfig['tabs'][number] }"
+      <div class="tab-sort-table">
+        <div class="tab-sort-table__header">
+          <span>拖拽</span>
+          <span>Tab 名称</span>
+          <span>展示位置</span>
+          <span>是否启用</span>
+        </div>
+        <div ref="tabListRef" class="tab-sort-table__body">
+          <div
+            v-for="(tab, index) in activeProjectType.tabs"
+            :key="tab.tab_key"
+            class="tab-sort-row"
+            :data-tab-key="tab.tab_key"
           >
-            <ElSwitch v-model="row.enabled" />
-          </template>
-        </ElTableColumn>
-      </ElTable>
+            <span class="drag-handle">⋮⋮</span>
+            <strong>{{ tab.name }}</strong>
+            <span class="tab-sort-row__position">
+              {{ resolveTabPosition(index, tab.enabled) }}
+            </span>
+            <ElSwitch v-model="tab.enabled" />
+          </div>
+        </div>
+      </div>
     </section>
   </section>
 </template>
 
 <script setup lang="ts">
+import Sortable from 'sortablejs'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { AppButton, DataTableShell, PageHeader } from '@/shared/components'
 import type { ProjectTypeConfig } from '../model/configuration.types'
 
-defineProps<{
+const props = defineProps<{
   projectTypes: ProjectTypeConfig[]
   activeTypeKey: string | undefined
   activeProjectType: ProjectTypeConfig | undefined
@@ -91,8 +101,59 @@ defineProps<{
 const emit = defineEmits<{
   open: [row: ProjectTypeConfig]
   back: []
+  reorderTabs: [oldIndex: number, newIndex: number]
   save: []
 }>()
+
+const tabListRef = ref<HTMLElement>()
+const sortable = ref<Sortable>()
+
+const setupSortable = async () => {
+  await nextTick()
+  sortable.value?.destroy()
+  sortable.value = undefined
+
+  if (!tabListRef.value || !props.activeProjectType) {
+    return
+  }
+
+  sortable.value = Sortable.create(tabListRef.value, {
+    animation: 150,
+    handle: '.drag-handle',
+    onEnd: (event) => {
+      if (
+        !props.activeProjectType ||
+        event.oldIndex === undefined ||
+        event.newIndex === undefined ||
+        event.oldIndex === event.newIndex
+      ) {
+        return
+      }
+
+      emit('reorderTabs', event.oldIndex, event.newIndex)
+    },
+  })
+}
+
+const resolveTabPosition = (index: number, enabled: boolean) => {
+  if (!enabled) {
+    return '未启用'
+  }
+
+  const currentTab = props.activeProjectType?.tabs[index]
+  const enabledIndex =
+    props.activeProjectType?.tabs
+      .filter((tab) => tab.enabled)
+      .findIndex((tab) => tab.tab_key === currentTab?.tab_key) ?? -1
+
+  return enabledIndex >= 6 ? '更多菜单' : '顶部 Tab'
+}
+
+watch(() => props.activeTypeKey, setupSortable, { immediate: true })
+
+onBeforeUnmount(() => {
+  sortable.value?.destroy()
+})
 </script>
 
 <style scoped>
@@ -130,5 +191,39 @@ const emit = defineEmits<{
 .drag-handle {
   color: var(--color-text-muted);
   cursor: grab;
+}
+
+.tab-sort-table {
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.tab-sort-table__header,
+.tab-sort-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 120px 120px;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 12px 16px;
+}
+
+.tab-sort-table__header {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-bg-subtle);
+}
+
+.tab-sort-row {
+  background: var(--color-bg-surface);
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.tab-sort-row__position {
+  color: var(--color-text-secondary);
+}
+
+.sortable-ghost {
+  opacity: 0.5;
 }
 </style>

@@ -18,6 +18,7 @@
 
     <ProjectFilters
       :query="query"
+      :project-types="projectCreateTemplate.project_types"
       @keyword-change="handleKeywordChange"
       @method-change="handleMethodChange"
       @status-change="handleStatusChange"
@@ -40,6 +41,8 @@
 
     <CreateProjectDialog
       v-model="createDialogVisible"
+      :template="projectCreateTemplate"
+      :template-loading="projectCreateTemplateQuery.isLoading.value"
       :submitting="createProjectMutation.isPending.value"
       @submit="handleCreateProject"
     />
@@ -66,6 +69,7 @@ import ProjectStatsSection from '../components/ProjectStatsSection.vue'
 import ProjectTableView from '../components/ProjectTableView.vue'
 import {
   useCreateProject,
+  useProjectCreateTemplate,
   useProjects,
   useProjectStats,
 } from '../api/project.queries'
@@ -85,6 +89,7 @@ const createDialogVisible = ref(false)
 const query = computed(() => parseProjectListQuery(route.query))
 const projectsQuery = useProjects(query)
 const statsQuery = useProjectStats(query)
+const projectCreateTemplateQuery = useProjectCreateTemplate()
 const createProjectMutation = useCreateProject()
 
 const viewOptions = [
@@ -95,6 +100,13 @@ const viewOptions = [
 const projects = computed(() => projectsQuery.data.value?.data ?? [])
 const total = computed(() => projectsQuery.data.value?.pagination.total ?? 0)
 const stats = computed(() => statsQuery.data.value)
+const projectCreateTemplate = computed(
+  () =>
+    projectCreateTemplateQuery.data.value ?? {
+      project_types: [],
+      owners: [],
+    },
+)
 const statsCards = computed(() => [
   {
     key: 'all',

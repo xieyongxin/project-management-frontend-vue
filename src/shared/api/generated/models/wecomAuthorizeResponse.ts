@@ -7,4 +7,8 @@
 
 export interface WecomAuthorizeResponse {
   authorize_url: string
+  qr_code_url: string
+  state: string
+  corp_id?: string
+  agent_id?: string
 }
