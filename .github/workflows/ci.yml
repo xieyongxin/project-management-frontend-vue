@@ -18,7 +18,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: xieyongxin/project-management-backend-go
+          ref: main
           path: .contract/project-management-backend-go
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
