@@ -56,7 +56,9 @@ export const findBestNavigationMatch = (
   visit(navigation, [])
 
   return matches.sort(
-    (first, second) => second.path.length - first.path.length,
+    (first, second) =>
+      second.path.length - first.path.length ||
+      second.ancestorKeys.length - first.ancestorKeys.length,
   )[0]
 }
 

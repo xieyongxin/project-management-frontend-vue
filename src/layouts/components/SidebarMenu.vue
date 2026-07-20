@@ -105,27 +105,18 @@ const handleSelect = (key: string) => {
 .app-sidebar-menu :deep(.el-menu-item:hover),
 .app-sidebar-menu :deep(.el-sub-menu__title:hover) {
   color: var(--color-primary);
-  background: var(--color-bg-hover);
+  background: var(--app-sidebar-hover-background);
 }
 
 .app-sidebar-menu :deep(.el-menu-item.is-active),
 .app-sidebar-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title) {
   color: var(--color-primary);
-  background: var(--color-bg-active);
+  background: var(--app-sidebar-active-background);
   font-weight: var(--font-weight-semibold);
 }
 
-.app-sidebar-menu :deep(.el-menu-item.is-active::before),
-.app-sidebar-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title::before) {
-  position: absolute;
-  top: 50%;
-  left: 6px;
-  width: 3px;
-  height: 22px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary);
-  content: '';
-  transform: translateY(-50%);
+.app-sidebar-menu :deep(.el-sub-menu .el-menu-item) {
+  padding-left: 48px;
 }
 
 .app-sidebar-menu.is-collapsed :deep(.el-menu-item),
@@ -136,11 +127,5 @@ const handleSelect = (key: string) => {
 
 .app-sidebar-menu.is-collapsed :deep(.el-icon) {
   margin-right: 0;
-}
-
-.app-sidebar-menu.is-collapsed :deep(.el-menu-item.is-active::before),
-.app-sidebar-menu.is-collapsed
-  :deep(.el-sub-menu.is-active > .el-sub-menu__title::before) {
-  left: 4px;
 }
 </style>

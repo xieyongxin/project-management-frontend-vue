@@ -130,6 +130,13 @@ export const configurationSections: {
   },
 ]
 
+export const normalizeConfigurationSection = (
+  value: unknown,
+): ConfigurationSection =>
+  value === 'project-types' || value === 'workflows' || value === 'roles'
+    ? value
+    : 'project-types'
+
 export const recipientRuleOptions = [
   { label: '负责人', value: 'assignee' },
   { label: '报告人', value: 'reporter' },

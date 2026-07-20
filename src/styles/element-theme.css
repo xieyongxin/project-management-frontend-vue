@@ -12,7 +12,7 @@
   --el-text-color-primary: var(--app-text-primary);
   --el-text-color-regular: var(--app-text-secondary);
   --el-text-color-placeholder: var(--app-text-placeholder);
-  --el-component-size: var(--app-input-height);
+  --el-component-size: var(--app-control-height);
 }
 
 .el-button {

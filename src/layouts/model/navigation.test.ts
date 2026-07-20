@@ -3,8 +3,25 @@ import type { AppNavigationNode } from './app-layout.types'
 import { findBestNavigationMatch, findNavigationPathByKey } from './navigation'
 
 const navigation: AppNavigationNode[] = [
-  { key: 'dashboard', label: '仪表盘', path: '/' },
+  { key: 'dashboard', label: '工作台', path: '/workspace' },
   { key: 'projects', label: '项目管理', path: '/projects' },
+  {
+    key: 'configuration',
+    label: '配置中心',
+    path: '/configuration/project-types',
+    children: [
+      {
+        key: 'configuration-project-types',
+        label: '项目类型配置',
+        path: '/configuration/project-types',
+      },
+      {
+        key: 'configuration-workflows',
+        label: '工作流配置',
+        path: '/configuration/workflows',
+      },
+    ],
+  },
 ]
 
 describe('navigation', () => {
@@ -15,6 +32,16 @@ describe('navigation', () => {
   })
 
   it('finds path by key', () => {
-    expect(findNavigationPathByKey(navigation, 'dashboard')).toBe('/')
+    expect(findNavigationPathByKey(navigation, 'dashboard')).toBe('/workspace')
+  })
+
+  it('matches configuration child routes and opens parent menu', () => {
+    expect(
+      findBestNavigationMatch(navigation, '/configuration/project-types'),
+    ).toEqual({
+      key: 'configuration-project-types',
+      path: '/configuration/project-types',
+      ancestorKeys: ['configuration'],
+    })
   })
 })

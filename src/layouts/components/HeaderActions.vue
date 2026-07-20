@@ -1,9 +1,7 @@
 <template>
-  <div
-    class="flex w-full min-w-0 items-center justify-end gap-[var(--space-3)]"
-  >
+  <div class="header-actions">
     <AppInput
-      class="ml-auto w-full max-w-md"
+      class="header-actions__search"
       clearable
       :aria-label="search?.ariaLabel ?? '全局搜索'"
       :placeholder="search?.placeholder ?? '搜索项目、任务或成员'"
@@ -13,7 +11,7 @@
       </template>
     </AppInput>
 
-    <div class="flex flex-none items-center gap-[var(--space-1)]">
+    <div class="header-actions__tools">
       <ElPopover
         trigger="click"
         placement="bottom-end"
@@ -64,3 +62,26 @@ const notificationLabel = computed(() =>
   notificationCount.value ? `通知，${notificationCount.value} 条未读` : '通知',
 )
 </script>
+
+<style scoped>
+.header-actions {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.header-actions__search {
+  width: min(100%, 420px);
+  margin-left: auto;
+}
+
+.header-actions__tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+</style>

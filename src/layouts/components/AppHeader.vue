@@ -1,12 +1,5 @@
 <template>
-  <header
-    class="bg-surface z-[var(--z-header)] flex flex-none items-center shadow-sm"
-    :style="{
-      height: 'var(--layout-header-height)',
-      paddingInline: 'var(--layout-content-padding)',
-      borderBottom: 'var(--border-width) solid var(--color-border)',
-    }"
-  >
+  <header class="app-header">
     <HeaderActions
       :user="user"
       :search="search"
@@ -29,3 +22,17 @@ const emit = defineEmits<{
   logout: []
 }>()
 </script>
+
+<style scoped>
+.app-header {
+  z-index: var(--z-header);
+  display: flex;
+  height: var(--app-header-height);
+  flex: none;
+  align-items: center;
+  padding-inline: var(--app-header-padding-inline);
+  background: var(--app-header-background);
+  border-bottom: var(--border-width) solid var(--color-divider);
+  box-shadow: var(--shadow-sm);
+}
+</style>

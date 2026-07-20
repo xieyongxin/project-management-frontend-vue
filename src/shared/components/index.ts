@@ -1,6 +1,7 @@
 export { default as AsyncPageSkeleton } from './AsyncPageSkeleton.vue'
 export { default as AppButton } from './AppButton.vue'
 export { default as AppInput } from './AppInput.vue'
+export { default as AppSelect } from './AppSelect.vue'
 export { default as BrandMark } from './BrandMark.vue'
 export { default as DataTableShell } from './DataTableShell.vue'
 export { default as EmptyState } from './EmptyState.vue'

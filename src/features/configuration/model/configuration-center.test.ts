@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getDefaultConfigurationState,
+  normalizeConfigurationSection,
   validateProjectTypeConfig,
   validateRoles,
   validateWorkflow,
@@ -49,5 +50,11 @@ describe('configuration-center model', () => {
     roles[0] = { ...roles[0]!, enabled: false }
 
     expect(validateRoles(roles).valid).toBe(false)
+  })
+
+  it('falls back invalid configuration sections to project type config', () => {
+    expect(normalizeConfigurationSection('workflows')).toBe('workflows')
+    expect(normalizeConfigurationSection('unknown')).toBe('project-types')
+    expect(normalizeConfigurationSection(undefined)).toBe('project-types')
   })
 })

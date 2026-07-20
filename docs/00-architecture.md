@@ -21,7 +21,6 @@ src/
 ├── features/  # auth、dashboard 等业务模块
 ├── shared/    # 跨模块基础能力
 ├── styles/    # Token、全局样式和品牌样式
-├── mocks/     # MSW Mock
 ├── test/      # 测试全局设置
 └── assets/    # 源码内静态资源
 ```
@@ -45,12 +44,14 @@ feature 之间禁止直接依赖。跨领域流程由 router/app 组合，真正
 - 变更请求携带与会话绑定的 CSRF Token。
 - 浏览器存储中不得保存访问令牌或刷新令牌。
 
-首期由 MSW 模拟：
+首期对接 Go 后端真实接口，接口契约来自后端仓库 `openapi/openapi.yaml`，前端通过 Orval 生成客户端：
 
-- `POST /auth/login`
+- `POST /auth/emergency/login`
 - `POST /auth/logout`
-- `GET /auth/me`
+- `GET /me`
 - `GET /auth/csrf`
+- `GET /auth/wecom/authorize`
+- `GET /auth/wecom/callback`
 
 ## ADR 索引
 

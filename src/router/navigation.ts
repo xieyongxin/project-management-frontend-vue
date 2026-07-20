@@ -20,6 +20,23 @@ export const appNavigation = [
     label: '配置中心',
     path: '/configuration/project-types',
     icon: Operation,
+    children: [
+      {
+        key: 'configuration-project-types',
+        label: '项目类型配置',
+        path: '/configuration/project-types',
+      },
+      {
+        key: 'configuration-workflows',
+        label: '工作流配置',
+        path: '/configuration/workflows',
+      },
+      {
+        key: 'configuration-roles',
+        label: '角色配置',
+        path: '/configuration/roles',
+      },
+    ],
   },
 ] satisfies readonly (Omit<AppNavigationNode, 'icon'> & {
   icon: Component

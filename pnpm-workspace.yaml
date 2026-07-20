@@ -5,6 +5,5 @@ allowBuilds:
   vue-demi: true
 onlyBuiltDependencies:
   - esbuild
-  - msw
   - unrs-resolver
   - vue-demi

@@ -11,6 +11,7 @@
 
   --app-input-height: var(--control-height);
   --app-button-height: var(--control-height);
+  --app-control-height: var(--control-height);
 
   --app-radius-sm: var(--radius-sm);
   --app-radius-md: var(--radius-md);
@@ -18,6 +19,18 @@
 
   --auth-container-max-width: 1400px;
   --auth-container-gutter: 48px;
+  --app-header-height: var(--layout-header-height);
+  --app-header-padding-inline: var(--layout-content-padding);
+  --app-header-background: var(--color-bg-surface);
+  --app-sidebar-width: var(--layout-sidebar-width);
+  --app-sidebar-collapsed-width: var(--layout-sidebar-collapsed-width);
+  --app-sidebar-background: var(--color-bg-surface);
+  --app-sidebar-active-background: var(--color-bg-active);
+  --app-sidebar-hover-background: var(--color-bg-hover);
+  --app-panel-background: var(--color-bg-surface);
+  --app-panel-border: var(--color-border);
+  --app-panel-radius: var(--radius-lg);
+  --app-panel-shadow: var(--shadow-sm);
 
   --app-space-xs: var(--space-1);
   --app-space-sm: var(--space-2);

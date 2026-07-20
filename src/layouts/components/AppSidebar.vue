@@ -1,10 +1,10 @@
 <template>
   <aside
-    class="border-divider bg-surface flex h-full flex-none flex-col overflow-hidden border-r shadow-sm"
+    class="app-sidebar"
     :style="{
       width: collapsed
-        ? 'var(--layout-sidebar-collapsed-width)'
-        : 'var(--layout-sidebar-width)',
+        ? 'var(--app-sidebar-collapsed-width)'
+        : 'var(--app-sidebar-width)',
     }"
   >
     <SidebarLogo :collapsed="collapsed" />
@@ -51,3 +51,16 @@ const emit = defineEmits<{
   toggleCollapse: []
 }>()
 </script>
+
+<style scoped>
+.app-sidebar {
+  display: flex;
+  height: 100%;
+  flex: none;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--app-sidebar-background);
+  border-right: var(--border-width) solid var(--color-divider);
+  box-shadow: var(--shadow-sm);
+}
+</style>

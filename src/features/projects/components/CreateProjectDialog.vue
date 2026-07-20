@@ -67,14 +67,7 @@
           <AppInput v-model="form.identifier" placeholder="如 PRJ-I-001" />
         </ElFormItem>
         <ElFormItem label="项目负责人" required>
-          <ElSelect v-model="form.ownerId" class="w-full">
-            <ElOption
-              v-for="owner in ownerOptions"
-              :key="owner.value"
-              :label="owner.label"
-              :value="owner.value"
-            />
-          </ElSelect>
+          <AppSelect v-model="form.ownerId" :options="ownerOptions" />
         </ElFormItem>
         <ElFormItem label="可见性" required>
           <ElRadioGroup v-model="form.visibility">
@@ -124,7 +117,7 @@
 <script setup lang="ts">
 import { DataBoard, Finished } from '@element-plus/icons-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { AppButton, AppInput } from '@/shared/components'
+import { AppButton, AppInput, AppSelect } from '@/shared/components'
 import type { ProjectCreatePayload } from '../model/project.types'
 
 const props = defineProps<{
