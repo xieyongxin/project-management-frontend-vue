@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '24'
       - run: corepack enable
-      - run: pnpm install --frozen-lockfile --config.auto-install-peers=false
+      - run: pnpm install --frozen-lockfile
       - run: pnpm api:check
         env:
           OPENAPI_SPEC: .contract/project-management-backend-go/openapi/openapi.yaml
