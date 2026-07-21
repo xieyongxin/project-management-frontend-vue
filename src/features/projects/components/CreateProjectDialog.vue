@@ -238,9 +238,11 @@ const flowNodeStyle = (node: ProjectFlowNode) => ({
 
 const validate = () => {
   errors.name = form.name.trim() ? '' : '项目名称不能为空。'
-  errors.identifier = /^[A-Z0-9-]{2,16}$/.test(form.identifier.trim())
-    ? ''
-    : '建议 2-16 位大写字母、数字或短横线。'
+  const identifier = form.identifier.trim()
+  errors.identifier =
+    identifier.length >= 2 && identifier.length <= 16
+      ? ''
+      : '项目标识长度需为 2-16 个字符。'
   errors.ownerId = form.ownerId ? '' : '请选择项目负责人。'
 
   return !errors.name && !errors.identifier && !errors.ownerId

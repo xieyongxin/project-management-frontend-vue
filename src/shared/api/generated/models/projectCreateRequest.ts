@@ -12,6 +12,9 @@ export interface ProjectCreateRequest {
   name: string
   method: ProjectCreateRequestMethod
   owner_id: string
+  default_assignee_id?: string | null
   visibility: ProjectCreateRequestVisibility
+  start_at?: string
+  end_at?: string
   description?: string
 }

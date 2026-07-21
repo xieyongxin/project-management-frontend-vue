@@ -19,9 +19,13 @@
     <ProjectFilters
       :query="query"
       :project-types="projectCreateTemplate.project_types"
+      :owner-options="ownerOptions"
+      :is-system-admin="isSystemAdmin"
       @keyword-change="handleKeywordChange"
       @method-change="handleMethodChange"
       @status-change="handleStatusChange"
+      @owner-change="handleOwnerChange"
+      @scope-change="handleScopeChange"
       @risk-status-change="handleRiskStatusChange"
     />
 
@@ -32,7 +36,10 @@
       :total="total"
       :page="query.page"
       :page-size="query.pageSize"
+      :current-user-id="currentUser?.id"
+      :is-system-admin="isSystemAdmin"
       @open="openProject"
+      @archive="handleArchiveProject"
       @page-change="handlePageChange"
       @page-size-change="handlePageSizeChange"
     />
@@ -58,7 +65,7 @@ import {
   Plus,
   Warning,
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AppButton, PageHeader } from '@/shared/components'
@@ -68,7 +75,9 @@ import ProjectFilters from '../components/ProjectFilters.vue'
 import ProjectStatsSection from '../components/ProjectStatsSection.vue'
 import ProjectTableView from '../components/ProjectTableView.vue'
 import {
+  useArchiveProject,
   useCreateProject,
+  useProjectCurrentUser,
   useProjectCreateTemplate,
   useProjects,
   useProjectStats,
@@ -87,10 +96,12 @@ const route = useRoute()
 const router = useRouter()
 const createDialogVisible = ref(false)
 const query = computed(() => parseProjectListQuery(route.query))
+const currentUserQuery = useProjectCurrentUser()
 const projectsQuery = useProjects(query)
 const statsQuery = useProjectStats(query)
 const projectCreateTemplateQuery = useProjectCreateTemplate()
 const createProjectMutation = useCreateProject()
+const archiveProjectMutation = useArchiveProject()
 
 const viewOptions = [
   { label: '表格', value: 'table' },
@@ -106,6 +117,16 @@ const projectCreateTemplate = computed(
       project_types: [],
       owners: [],
     },
+)
+const currentUser = computed(() => currentUserQuery.data.value)
+const isSystemAdmin = computed(
+  () => currentUser.value?.roles.includes('system_admin') ?? false,
+)
+const ownerOptions = computed(() =>
+  projectCreateTemplate.value.owners.map((owner) => ({
+    label: owner.display_name,
+    value: owner.id,
+  })),
 )
 const statsCards = computed(() => [
   {
@@ -201,6 +222,20 @@ const handleStatusChange = (value: unknown) => {
   })
 }
 
+const handleOwnerChange = (value: unknown) => {
+  updateQuery({
+    ownerId: normalizeEmpty(value),
+    page: 1,
+  })
+}
+
+const handleScopeChange = (value: unknown) => {
+  updateQuery({
+    scope: value === 'all' && isSystemAdmin.value ? 'all' : 'visible',
+    page: 1,
+  })
+}
+
 const handleRiskStatusChange = (value: unknown) => {
   updateQuery({
     riskStatus: normalizeEmpty(value) as ProjectListQuery['riskStatus'],
@@ -225,6 +260,31 @@ const handlePageSizeChange = (pageSize: number) => {
 
 const openProject = (project: ProjectSummary) => {
   void router.push(`/projects/${project.id}/overview`)
+}
+
+const handleArchiveProject = async (project: ProjectSummary) => {
+  try {
+    await ElMessageBox.confirm(
+      '归档后项目将变为只读，且首版不支持恢复。确定归档吗？',
+      '归档项目',
+      {
+        type: 'warning',
+        confirmButtonText: '归档',
+        cancelButtonText: '取消',
+      },
+    )
+    archiveProjectMutation.mutate(
+      {
+        projectId: project.id,
+        payload: { row_version: project.row_version },
+      },
+      {
+        onSuccess: () => ElMessage.success('项目已归档'),
+      },
+    )
+  } catch {
+    // user cancelled
+  }
 }
 
 const handleCreateProject = (payload: ProjectCreatePayload) => {

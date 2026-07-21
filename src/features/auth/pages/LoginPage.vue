@@ -10,7 +10,6 @@
       @submit="handleEmailLogin"
       @refresh-wecom="loadWecomTarget"
       @wecom-login="startWecomLogin"
-      @reset-help="showResetHelp"
     />
 
     <template #hero>
@@ -95,9 +94,5 @@ const handleEmailLogin = async (payload: {
   } catch {
     // Mutation 状态负责渲染统一 AppError，保留表单输入供用户修正。
   }
-}
-
-const showResetHelp = () => {
-  ElMessage.info('请联系系统管理员重置密码。')
 }
 </script>

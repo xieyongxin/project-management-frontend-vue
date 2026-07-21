@@ -3,7 +3,7 @@ import { authKeys } from '../api/auth.keys'
 import {
   fetchCurrentUser,
   getWecomAuthorizeTarget,
-  loginWithEmergencyCredentials,
+  loginWithMockWecomEmail,
   logoutCurrentUser,
 } from '../api/auth.service'
 
@@ -17,7 +17,7 @@ export const useLogin = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: loginWithEmergencyCredentials,
+    mutationFn: loginWithMockWecomEmail,
     onSuccess: (user) => {
       queryClient.setQueryData(authKeys.currentUser(), user)
     },

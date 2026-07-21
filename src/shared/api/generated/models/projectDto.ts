@@ -8,4 +8,5 @@ import type { ProjectSummaryDto } from './projectSummaryDto'
 
 export type ProjectDto = ProjectSummaryDto & {
   description: string
+  created_at: string
 }

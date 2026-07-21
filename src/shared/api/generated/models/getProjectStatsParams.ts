@@ -4,11 +4,13 @@
  * Project Management Backend API
  * OpenAPI spec version: 0.2.0
  */
+import type { GetProjectStatsScope } from './getProjectStatsScope'
 
 export type GetProjectStatsParams = {
   keyword?: string
   method?: string
   status?: string
   owner_id?: string
+  scope?: GetProjectStatsScope
   risk_status?: string
 }

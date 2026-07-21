@@ -15,12 +15,14 @@ import type {
   GetProjectStatsParams,
   GetProjectTasksParams,
   GetProjectsParams,
+  GetUsersParams,
   GetWecomAuthorizeParams,
   GetWecomCallbackParams,
   GetWorkItemsParams,
-  LoginRequest,
+  MockWecomLoginRequest,
   PhaseDto,
   PhaseUpdateRequest,
+  ProjectArchiveRequest,
   ProjectConfigurationSnapshotDto,
   ProjectCreateRequest,
   ProjectCreateTemplateDto,
@@ -33,6 +35,7 @@ import type {
   ProjectOverviewDto,
   ProjectTypeConfigDto,
   ProjectTypeConfigUpdate,
+  ProjectUpdateRequest,
   ReleaseRequest,
   RestoreDefaultWorkflowDefinitionBody,
   RoleCreate,
@@ -48,7 +51,8 @@ import type {
   TestRunDetailDto,
   TestRunStepUpdateRequest,
   TodoItemDto,
-  UserLiteDto,
+  UserDto,
+  UserStatusUpdateRequest,
   VersionDto,
   VersionSaveRequest,
   VersionScopeRequest,
@@ -90,16 +94,16 @@ export const getWecomCallback = (
   )
 }
 
-export const emergencyLogin = (
-  loginRequest: BodyType<LoginRequest>,
+export const mockWecomLogin = (
+  mockWecomLoginRequest: BodyType<MockWecomLoginRequest>,
   options?: SecondParameter<typeof apiClient<void>>,
 ) => {
   return apiClient<void>(
     {
-      url: `/auth/emergency/login`,
+      url: `/auth/wecom/mock-login`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      data: loginRequest,
+      data: mockWecomLoginRequest,
     },
     options,
   )
@@ -116,9 +120,48 @@ export const getCurrentUser = (
 }
 
 export const getUsers = (
-  options?: SecondParameter<typeof apiClient<UserLiteDto[]>>,
+  params?: GetUsersParams,
+  options?: SecondParameter<typeof apiClient<UserDto[]>>,
 ) => {
-  return apiClient<UserLiteDto[]>({ url: `/users`, method: 'GET' }, options)
+  return apiClient<UserDto[]>({ url: `/users`, method: 'GET', params }, options)
+}
+
+export const updateUserStatus = (
+  id: string,
+  userStatusUpdateRequest: BodyType<UserStatusUpdateRequest>,
+  options?: SecondParameter<typeof apiClient<UserDto>>,
+) => {
+  return apiClient<UserDto>(
+    {
+      url: `/users/${id}/status`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: userStatusUpdateRequest,
+    },
+    options,
+  )
+}
+
+export const grantUserGlobalRole = (
+  id: string,
+  roleKey: 'system_admin',
+  options?: SecondParameter<typeof apiClient<UserDto>>,
+) => {
+  return apiClient<UserDto>(
+    { url: `/users/${id}/global-roles/${roleKey}`, method: 'POST' },
+    options,
+  )
+}
+
+export const revokeUserGlobalRole = (
+  id: string,
+  roleKey: 'system_admin',
+  options?: SecondParameter<typeof apiClient<UserDto>>,
+) => {
+  return apiClient<UserDto>(
+    { url: `/users/${id}/global-roles/${roleKey}`, method: 'DELETE' },
+    options,
+  )
 }
 
 export const getCsrfToken = (
@@ -340,6 +383,38 @@ export const getProject = (
 ) => {
   return apiClient<ProjectDto>(
     { url: `/projects/${id}`, method: 'GET' },
+    options,
+  )
+}
+
+export const updateProject = (
+  id: string,
+  projectUpdateRequest: BodyType<ProjectUpdateRequest>,
+  options?: SecondParameter<typeof apiClient<ProjectDto>>,
+) => {
+  return apiClient<ProjectDto>(
+    {
+      url: `/projects/${id}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: projectUpdateRequest,
+    },
+    options,
+  )
+}
+
+export const archiveProject = (
+  id: string,
+  projectArchiveRequest: BodyType<ProjectArchiveRequest>,
+  options?: SecondParameter<typeof apiClient<ProjectDto>>,
+) => {
+  return apiClient<ProjectDto>(
+    {
+      url: `/projects/${id}/archive`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: projectArchiveRequest,
+    },
     options,
   )
 }
@@ -807,14 +882,23 @@ export type GetWecomAuthorizeResult = NonNullable<
 export type GetWecomCallbackResult = NonNullable<
   Awaited<ReturnType<typeof getWecomCallback>>
 >
-export type EmergencyLoginResult = NonNullable<
-  Awaited<ReturnType<typeof emergencyLogin>>
+export type MockWecomLoginResult = NonNullable<
+  Awaited<ReturnType<typeof mockWecomLogin>>
 >
 export type LogoutResult = NonNullable<Awaited<ReturnType<typeof logout>>>
 export type GetCurrentUserResult = NonNullable<
   Awaited<ReturnType<typeof getCurrentUser>>
 >
 export type GetUsersResult = NonNullable<Awaited<ReturnType<typeof getUsers>>>
+export type UpdateUserStatusResult = NonNullable<
+  Awaited<ReturnType<typeof updateUserStatus>>
+>
+export type GrantUserGlobalRoleResult = NonNullable<
+  Awaited<ReturnType<typeof grantUserGlobalRole>>
+>
+export type RevokeUserGlobalRoleResult = NonNullable<
+  Awaited<ReturnType<typeof revokeUserGlobalRole>>
+>
 export type GetCsrfTokenResult = NonNullable<
   Awaited<ReturnType<typeof getCsrfToken>>
 >
@@ -871,6 +955,12 @@ export type GetProjectStatsResult = NonNullable<
 >
 export type GetProjectResult = NonNullable<
   Awaited<ReturnType<typeof getProject>>
+>
+export type UpdateProjectResult = NonNullable<
+  Awaited<ReturnType<typeof updateProject>>
+>
+export type ArchiveProjectResult = NonNullable<
+  Awaited<ReturnType<typeof archiveProject>>
 >
 export type GetProjectNavigationResult = NonNullable<
   Awaited<ReturnType<typeof getProjectNavigation>>

@@ -5,8 +5,6 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface LoginRequest {
+export interface MockWecomLoginRequest {
   email: string
-  /** @minLength 1 */
-  password: string
 }

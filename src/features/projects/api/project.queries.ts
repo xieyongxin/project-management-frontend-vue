@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import type { MaybeRefOrGetter } from 'vue'
 import { computed, toValue } from 'vue'
 import {
+  archiveProject,
   createProject,
   getProject,
   getProjectCreateTemplate,
@@ -9,8 +10,12 @@ import {
   getProjectOverview,
   getProjectStats,
   getProjects,
+  getCurrentUser,
 } from '@/shared/api/generated/auth-api'
-import type { ProjectCreateRequest } from '@/shared/api/generated/models'
+import type {
+  ProjectArchiveRequest,
+  ProjectCreateRequest,
+} from '@/shared/api/generated/models'
 import { toProjectRequestParams } from '../model/project-list-query'
 import type { ProjectListQuery } from '../model/project-list-query'
 import { projectKeys } from './project.keys'
@@ -51,6 +56,12 @@ export const useProjectOverview = (projectId: MaybeRefOrGetter<string>) =>
     queryFn: () => getProjectOverview(toValue(projectId)),
   })
 
+export const useProjectCurrentUser = () =>
+  useQuery({
+    queryKey: ['auth', 'current-user'],
+    queryFn: getCurrentUser,
+  })
+
 export const useCreateProject = () => {
   const queryClient = useQueryClient()
 
@@ -58,6 +69,28 @@ export const useCreateProject = () => {
     mutationFn: (payload: ProjectCreateRequest) => createProject(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    },
+  })
+}
+
+export const useArchiveProject = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      payload,
+    }: {
+      projectId: string
+      payload: ProjectArchiveRequest
+    }) => archiveProject(projectId, payload),
+    onSuccess: async (_project, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.detail(variables.projectId),
+        }),
+      ])
     },
   })
 }

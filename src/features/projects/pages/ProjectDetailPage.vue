@@ -208,6 +208,7 @@ import {
   ElTimeline,
   ElTimelineItem,
   ElMessage,
+  ElMessageBox,
 } from 'element-plus'
 import {
   computed,
@@ -229,7 +230,6 @@ import {
 } from '@/shared/components'
 import type {
   ProjectActivityEvent,
-  ProjectMember,
   ProjectPhase,
   ProjectTestRun,
   ProjectVersion,
@@ -1061,14 +1061,42 @@ const MemberPanel = defineComponent({
   setup() {
     const userID = ref('')
     const roleKey = ref('developer')
+    const usersQuery = useQuery({
+      queryKey: ['users', 'enabled'],
+      queryFn: () => projectDetailApi.users({ status: 'enabled' }),
+    })
     const mutation = useMutation({
       mutationFn: () =>
         projectDetailApi.saveProjectMember(projectId.value, {
           user_id: userID.value,
           role_key: roleKey.value,
         } as any),
+      onSuccess: () => {
+        userID.value = ''
+        return membersQuery.refetch()
+      },
+    })
+    const removeMutation = useMutation({
+      mutationFn: (memberId: string) =>
+        projectDetailApi.removeProjectMember(projectId.value, memberId),
       onSuccess: () => membersQuery.refetch(),
     })
+    const removeMember = async (member: any) => {
+      try {
+        await ElMessageBox.confirm(
+          `确定将 ${member.user.display_name} 移出项目吗？`,
+          '移除成员',
+          {
+            type: 'warning',
+            confirmButtonText: '移除',
+            cancelButtonText: '取消',
+          },
+        )
+        removeMutation.mutate(member.id)
+      } catch {
+        // user cancelled
+      }
+    }
     return () =>
       h('section', { class: 'project-detail-panel' }, [
         h('div', { class: 'panel-heading' }, [
@@ -1092,10 +1120,10 @@ const MemberPanel = defineComponent({
               placeholder: 'Select member',
             },
             () =>
-              (membersQuery.data.value ?? []).map((member: ProjectMember) =>
+              (usersQuery.data.value ?? []).map((user: any) =>
                 h(EOption, {
-                  label: member.user.display_name,
-                  value: member.user.id,
+                  label: user.display_name,
+                  value: user.id,
                 }),
               ),
           ),
@@ -1133,6 +1161,23 @@ const MemberPanel = defineComponent({
           h(ETableColumn, { prop: 'task_count', label: 'Task', width: 90 }),
           h(ETableColumn, { prop: 'defect_count', label: 'Bug', width: 90 }),
           h(ETableColumn, { prop: 'test_run_count', label: 'Test', width: 90 }),
+          h(
+            ETableColumn,
+            { label: 'Actions', width: 110, fixed: 'right' },
+            {
+              default: ({ row }: any) =>
+                h(
+                  EButton,
+                  {
+                    link: true,
+                    type: 'danger',
+                    loading: removeMutation.isPending.value,
+                    onClick: () => void removeMember(row),
+                  },
+                  () => 'Remove',
+                ),
+            },
+          ),
         ]),
       ])
   },

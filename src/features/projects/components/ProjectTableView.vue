@@ -78,10 +78,18 @@
         </template>
       </ElTableColumn>
       <ElTableColumn prop="updated_at" label="更新时间" width="150" />
-      <ElTableColumn label="操作" width="100" fixed="right">
+      <ElTableColumn label="操作" width="140" fixed="right">
         <template #default="{ row }: { row: ProjectSummary }">
           <AppButton link type="primary" @click.stop="emit('open', row)">
             查看
+          </AppButton>
+          <AppButton
+            v-if="canArchive(row)"
+            link
+            type="danger"
+            @click.stop="emit('archive', row)"
+          >
+            归档
           </AppButton>
         </template>
       </ElTableColumn>
@@ -114,19 +122,26 @@ import {
 } from '../model/project-labels'
 import type { ProjectSummary } from '../model/project.types'
 
-defineProps<{
+const props = defineProps<{
   projects: ProjectSummary[]
   loading: boolean
   total: number
   page: number
   pageSize: number
+  currentUserId?: string | undefined
+  isSystemAdmin?: boolean
 }>()
 
 const emit = defineEmits<{
   open: [project: ProjectSummary]
+  archive: [project: ProjectSummary]
   pageChange: [page: number]
   pageSizeChange: [pageSize: number]
 }>()
+
+const canArchive = (project: ProjectSummary) =>
+  project.status !== 'archived' &&
+  (props.isSystemAdmin || project.owner.id === props.currentUserId)
 </script>
 
 <style scoped>

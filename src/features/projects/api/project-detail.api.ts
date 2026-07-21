@@ -16,8 +16,10 @@ import {
   getProjectTestExecutionBoard,
   getProjectTestRun,
   getProjectVersions,
+  getUsers,
   getWorkItem,
   releaseVersion,
+  removeProjectMember,
   saveProjectMember,
   transitionWorkItem,
   updatePhase,
@@ -57,6 +59,7 @@ export const projectDetailApi = {
   testBoard: getProjectTestExecutionBoard,
   testRun: getProjectTestRun,
   workItem: getWorkItem,
+  users: getUsers,
 
   workItems(projectId: string, kind: WorkItemKind, params: WorkItemListParams) {
     if (kind === 'tasks') {
@@ -118,5 +121,9 @@ export const projectDetailApi = {
 
   saveProjectMember(projectId: string, payload: ProjectMemberSaveRequest) {
     return saveProjectMember(projectId, payload)
+  },
+
+  removeProjectMember(projectId: string, memberId: string) {
+    return removeProjectMember(projectId, memberId)
   },
 }

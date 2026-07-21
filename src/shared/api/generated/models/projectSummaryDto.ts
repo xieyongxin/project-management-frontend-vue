@@ -18,6 +18,9 @@ export interface ProjectSummaryDto {
   status: ProjectSummaryDtoStatus
   visibility: ProjectSummaryDtoVisibility
   owner: UserLiteDto
+  default_assignee?: UserLiteDto | null
+  start_at: string
+  end_at: string
   current_stage: string
   requirement_completion_rate: number
   task_completion_rate: number
@@ -25,5 +28,7 @@ export interface ProjectSummaryDto {
   blocker_or_critical_defect_count: number
   health_status: ProjectSummaryDtoHealthStatus
   risk_summary: string
+  row_version: number
+  archived_at: string
   updated_at: string
 }

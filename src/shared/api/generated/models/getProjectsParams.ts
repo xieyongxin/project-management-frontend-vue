@@ -6,6 +6,7 @@
  */
 import type { GetProjectsMethod } from './getProjectsMethod'
 import type { GetProjectsRiskStatus } from './getProjectsRiskStatus'
+import type { GetProjectsScope } from './getProjectsScope'
 import type { GetProjectsStatus } from './getProjectsStatus'
 
 export type GetProjectsParams = {
@@ -13,6 +14,7 @@ export type GetProjectsParams = {
   method?: GetProjectsMethod
   status?: GetProjectsStatus
   owner_id?: string
+  scope?: GetProjectsScope
   risk_status?: GetProjectsRiskStatus
   page?: number
   page_size?: number

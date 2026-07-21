@@ -3,29 +3,6 @@
     <ElCard class="login-card" shadow="never">
       <BrandMark size="large" subtitle="内部研发与测试协作管理系统" />
 
-      <div class="login-tabs" role="tablist" aria-label="登录方式">
-        <button
-          type="button"
-          :class="['login-tab', { 'is-active': activeLoginMode === 'wecom' }]"
-          role="tab"
-          :aria-selected="activeLoginMode === 'wecom'"
-          aria-controls="wecom-login-panel"
-          @click="activeLoginMode = 'wecom'"
-        >
-          企业微信扫码
-        </button>
-        <button
-          type="button"
-          :class="['login-tab', { 'is-active': activeLoginMode === 'email' }]"
-          role="tab"
-          :aria-selected="activeLoginMode === 'email'"
-          aria-controls="email-login-panel"
-          @click="activeLoginMode = 'email'"
-        >
-          邮箱登录
-        </button>
-      </div>
-
       <ElAlert
         v-if="errorMessage"
         class="login-alert"
@@ -35,12 +12,12 @@
         :title="errorMessage"
       />
 
-      <section
-        v-show="activeLoginMode === 'wecom'"
+      <ElForm
         id="wecom-login-panel"
         class="wecom-panel"
-        role="tabpanel"
+        novalidate
         aria-label="企业微信扫码登录"
+        @submit.prevent="submitMockWecomLogin"
       >
         <div class="wecom-qr" aria-label="企业微信登录二维码">
           <iframe
@@ -54,8 +31,24 @@
           </div>
         </div>
         <p class="login-hint">
-          使用企业微信扫码完成统一身份认证。当前阶段按正式回调形态接入，第三方身份校验由后端模拟通过。
+          使用企业微信扫码完成统一身份认证。当前阶段无法对接企微时，可输入邮箱模拟扫码；邮箱不存在会自动创建用户。
         </p>
+        <FormTextField
+          v-if="!canEmbedQr"
+          v-model="form.email"
+          class="mock-wecom-email"
+          label="邮箱地址"
+          hide-label
+          autocomplete="username"
+          placeholder="请输入邮箱模拟企业微信扫码"
+          :error="fieldErrors.email"
+          size="large"
+          variant="auth"
+        >
+          <template #prefix>
+            <ElIcon><Message /></ElIcon>
+          </template>
+        </FormTextField>
         <AppButton
           class="login-secondary-button"
           :loading="wecomLoading"
@@ -69,74 +62,10 @@
           size="large"
           variant="auth"
           :loading="wecomLoading"
-          @click="emit('wecomLogin')"
+          :native-type="canEmbedQr ? 'button' : 'submit'"
+          @click="canEmbedQr ? emit('wecomLogin') : undefined"
         >
-          {{ canEmbedQr ? '打开授权入口' : '完成扫码登录' }}
-        </AppButton>
-      </section>
-
-      <ElForm
-        v-show="activeLoginMode === 'email'"
-        id="email-login-panel"
-        class="email-login-form"
-        novalidate
-        role="tabpanel"
-        aria-label="邮箱登录"
-        @submit.prevent="submitEmailLogin"
-      >
-        <div class="login-fields">
-          <FormTextField
-            v-model="form.email"
-            label="邮箱地址"
-            hide-label
-            autocomplete="username"
-            placeholder="请输入邮箱地址"
-            :error="fieldErrors.email"
-            size="large"
-            variant="auth"
-          >
-            <template #prefix>
-              <ElIcon><Message /></ElIcon>
-            </template>
-          </FormTextField>
-          <FormTextField
-            v-model="form.password"
-            label="密码"
-            hide-label
-            type="password"
-            autocomplete="current-password"
-            placeholder="请输入密码"
-            :error="fieldErrors.password"
-            size="large"
-            variant="auth"
-          >
-            <template #prefix>
-              <ElIcon><Lock /></ElIcon>
-            </template>
-          </FormTextField>
-        </div>
-
-        <div class="login-options">
-          <ElCheckbox v-model="rememberEmail">记住账号</ElCheckbox>
-          <AppButton
-            class="login-link"
-            link
-            type="primary"
-            @click="emit('resetHelp')"
-          >
-            忘记密码？
-          </AppButton>
-        </div>
-
-        <AppButton
-          class="login-submit-button"
-          type="primary"
-          native-type="submit"
-          size="large"
-          variant="auth"
-          :loading="emailLoading"
-        >
-          登录
+          {{ canEmbedQr ? '打开授权入口' : '模拟扫码登录' }}
         </AppButton>
       </ElForm>
     </ElCard>
@@ -144,11 +73,11 @@
 </template>
 
 <script setup lang="ts">
-import { Connection, Lock, Message } from '@element-plus/icons-vue'
+import { Connection, Message } from '@element-plus/icons-vue'
 import { computed, reactive, ref } from 'vue'
 import { AppButton, BrandMark } from '@/shared/components'
-import type { WecomAuthorizeResponse } from '../model/current-user'
 import { FormTextField } from '@/shared/form'
+import type { WecomAuthorizeResponse } from '../model/current-user'
 import { loginSchema, type LoginCredentials } from '../model/login.schema'
 
 const props = withDefaults(
@@ -174,20 +103,16 @@ const emit = defineEmits<{
   submit: [payload: { credentials: LoginCredentials; rememberEmail: boolean }]
   refreshWecom: []
   wecomLogin: []
-  resetHelp: []
 }>()
 
-const activeLoginMode = ref<'wecom' | 'email'>('wecom')
 const rememberEmail = ref(props.initialRememberEmail)
 const form = reactive<LoginCredentials>({
   email: props.initialEmail,
-  password: '',
 })
 const fieldErrors = reactive<
   Record<keyof LoginCredentials, string | undefined>
 >({
   email: undefined,
-  password: undefined,
 })
 
 const canEmbedQr = computed(() =>
@@ -196,7 +121,6 @@ const canEmbedQr = computed(() =>
 
 const validateForm = () => {
   fieldErrors.email = undefined
-  fieldErrors.password = undefined
   const result = loginSchema.safeParse(form)
 
   if (result.success) {
@@ -206,7 +130,7 @@ const validateForm = () => {
   result.error.issues.forEach((issue) => {
     const field = issue.path[0]
 
-    if (field === 'email' || field === 'password') {
+    if (field === 'email') {
       fieldErrors[field] = issue.message
     }
   })
@@ -225,6 +149,14 @@ const submitEmailLogin = () => {
     credentials,
     rememberEmail: rememberEmail.value,
   })
+}
+
+const submitMockWecomLogin = () => {
+  if (canEmbedQr.value) {
+    return
+  }
+
+  submitEmailLogin()
 }
 </script>
 

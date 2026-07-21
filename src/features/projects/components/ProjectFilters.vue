@@ -26,11 +26,25 @@
       @update:model-value="emit('statusChange', $event)"
     />
     <AppSelect
+      :model-value="query.ownerId"
+      clearable
+      placeholder="负责人"
+      :options="filterOwnerOptions"
+      @update:model-value="emit('ownerChange', $event)"
+    />
+    <AppSelect
       :model-value="query.riskStatus"
       clearable
       placeholder="风险状态"
       :options="riskStatusOptions"
       @update:model-value="emit('riskStatusChange', $event)"
+    />
+    <ElSwitch
+      v-if="canViewAllProjects"
+      :model-value="query.scope === 'all'"
+      active-text="全部项目"
+      inactive-text="可见项目"
+      @update:model-value="emit('scopeChange', $event ? 'all' : 'visible')"
     />
     <AppButton plain>
       <ElIcon><Filter /></ElIcon>
@@ -49,12 +63,16 @@ import type { ProjectTemplateType } from '../model/project.types'
 const props = defineProps<{
   query: ProjectListQuery
   projectTypes?: ProjectTemplateType[]
+  ownerOptions?: { label: string; value: string }[]
+  isSystemAdmin?: boolean
 }>()
 
 const emit = defineEmits<{
   keywordChange: [value: string]
   methodChange: [value: unknown]
   statusChange: [value: unknown]
+  ownerChange: [value: unknown]
+  scopeChange: [value: unknown]
   riskStatusChange: [value: unknown]
 }>()
 
@@ -65,6 +83,8 @@ const methodOptions = computed(
       value: item.method,
     })) ?? [],
 )
+const filterOwnerOptions = computed(() => props.ownerOptions ?? [])
+const canViewAllProjects = computed(() => props.isSystemAdmin ?? false)
 const statusOptions = [
   { label: '进行中', value: 'active' },
   { label: '暂停', value: 'paused' },

@@ -1,9 +1,9 @@
 import {
-  emergencyLogin,
   getCsrfToken,
   getCurrentUser,
   getWecomAuthorize,
   logout,
+  mockWecomLogin,
 } from '@/shared/api/generated/auth-api'
 import { setCsrfToken } from '@/shared/api/client'
 import type { LoginCredentials } from '../model/login.schema'
@@ -26,14 +26,14 @@ export const getWecomAuthorizeTarget = async (returnTo?: string) => {
   })
 }
 
-export const loginWithEmergencyCredentials = async (
+export const loginWithMockWecomEmail = async (
   credentials: LoginCredentials,
 ) => {
-  await emergencyLogin(credentials)
+  await mockWecomLogin(credentials)
   return fetchCurrentUser()
 }
 
-export const loginWithCredentials = loginWithEmergencyCredentials
+export const loginWithCredentials = loginWithMockWecomEmail
 
 export const logoutCurrentUser = async () => {
   await logout()
