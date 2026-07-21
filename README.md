@@ -1,8 +1,20 @@
-# 项目协作工作台前端 Vue 版
+# Project Management Frontend Vue
 
-面向研发、测试与项目协作场景的 Vue 3 企业级前端工程基线。视觉和首期功能对齐 React 版：Mock 登录、受保护主布局、Sidebar、Header、OpenAPI 代码生成和质量门禁。
+Vue 3 frontend for the project management tool. The app talks to the Go backend through the Orval client generated from the backend OpenAPI contract.
 
-## 环境
+## Current Scope
+
+Implemented pages:
+
+- Login: WeCom scan-shaped login and emergency admin login.
+- Workspace dashboard.
+- Project management list and project creation.
+- Project detail tabs: overview, requirements, tasks, defects, sprints/phases, versions, tests, members, activity, configuration snapshot.
+- Configuration center: project type tabs, workflows, roles.
+
+The frontend does not run MSW or page-level business mocks. Business data, project templates, users, workflow states, and project detail tab data come from the backend.
+
+## Environment
 
 - Node.js 24 LTS
 - pnpm 11
@@ -13,17 +25,22 @@ copy .env.example .env.local
 pnpm dev
 ```
 
-Mock 演示账号：`demo@example.com` / `demo1234`。
+Default backend seed account:
 
-## 常用命令
+- Email: `demo@example.com`
+- Password: `demo1234`
+
+The default dev server runs on `http://localhost:5174` and proxies `/api` to `http://localhost:8080`.
+
+## Common Commands
 
 ```bash
-pnpm api:generate   # 从 OpenAPI 生成 DTO 和请求函数
-pnpm typecheck      # Vue + TypeScript 严格检查
-pnpm lint           # ESLint 与架构边界检查
-pnpm test           # Vitest
-pnpm build          # 生产构建
-pnpm check          # 执行完整本地质量门禁
+pnpm api:generate
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm check
 ```
 
-开始开发前先阅读 [架构地图](docs/00-architecture.md) 和 [Feature Public API 规范](docs/conventions/feature-public-api.md)。重大技术决策记录在 `docs/adr`，生成目录 `src/shared/api/generated` 禁止手工修改。
+Generated files under `src/shared/api/generated` must not be edited by hand.

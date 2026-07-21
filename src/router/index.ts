@@ -39,6 +39,12 @@ export const router = createRouter({
             import('@/features/projects/pages/ProjectDetailPage.vue'),
         },
         {
+          path: 'projects/:projectId/work-items/:workItemId',
+          name: 'ProjectWorkItemDetail',
+          component: () =>
+            import('@/features/projects/pages/ProjectDetailPage.vue'),
+        },
+        {
           path: 'configuration',
           redirect: '/configuration/project-types',
         },

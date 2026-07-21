@@ -68,3 +68,9 @@ feature 之间禁止直接依赖。跨领域流程由 router/app 组合，真正
 - [0003 Server Session Cookie Auth](adr/0003-server-session-cookie-auth.md)
 - [0004 TanStack Query Server State](adr/0004-tanstack-query-vue-server-state.md)
 - [0005 Feature First and Pinia Scope](adr/0005-feature-first-and-pinia-scope.md)
+
+## Current Detail-Tab Scope (2026-07-21)
+
+Project detail tabs now use backend-backed APIs for overview, requirements, tasks, defects, sprints/phases, versions, tests, members, activity, and configuration snapshot. Scrum projects expose sprints; Waterfall projects expose phases. Work item transitions are validated by the backend against the workflow snapshot copied at project creation time. The frontend shows only backend-returned actions instead of hard-coded transitions.
+
+Global test libraries, attachment upload, real notifications, real outbound webhooks, and real Git/CI webhook ingestion remain outside this phase.

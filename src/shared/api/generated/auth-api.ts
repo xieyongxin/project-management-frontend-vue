@@ -8,28 +8,58 @@ import type {
   ActivityEventDto,
   CsrfTokenResponse,
   CurrentUserDto,
+  DevRecordCreateRequest,
   GetMyTodosParams,
+  GetProjectDefectsParams,
+  GetProjectRequirementsParams,
   GetProjectStatsParams,
+  GetProjectTasksParams,
   GetProjectsParams,
   GetWecomAuthorizeParams,
   GetWecomCallbackParams,
+  GetWorkItemsParams,
   LoginRequest,
+  PhaseDto,
+  PhaseUpdateRequest,
+  ProjectConfigurationSnapshotDto,
   ProjectCreateRequest,
   ProjectCreateTemplateDto,
   ProjectDto,
   ProjectListResponse,
   ProjectListStatsDto,
+  ProjectMemberDto,
+  ProjectMemberSaveRequest,
   ProjectNavigationDto,
   ProjectOverviewDto,
   ProjectTypeConfigDto,
   ProjectTypeConfigUpdate,
+  ReleaseRequest,
   RestoreDefaultWorkflowDefinitionBody,
   RoleCreate,
   RoleDto,
   RoleUpdate,
+  SprintDto,
+  SprintSaveRequest,
+  TestExecutionBoardDto,
+  TestPlanDto,
+  TestPlanSaveRequest,
+  TestRunCreateRequest,
+  TestRunDefectRequest,
+  TestRunDetailDto,
+  TestRunStepUpdateRequest,
   TodoItemDto,
   UserLiteDto,
+  VersionDto,
+  VersionSaveRequest,
+  VersionScopeRequest,
   WecomAuthorizeResponse,
+  WorkItemCommentCreateRequest,
+  WorkItemCreateRequest,
+  WorkItemDto,
+  WorkItemListResponse,
+  WorkItemRelationCreateRequest,
+  WorkItemTransitionRequest,
+  WorkItemUpdateRequest,
   WorkflowDto,
   WorkflowUpdate,
   WorkflowValidationDto,
@@ -334,6 +364,443 @@ export const getProjectOverview = (
   )
 }
 
+export const getProjectActivity = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<ActivityEventDto[]>>,
+) => {
+  return apiClient<ActivityEventDto[]>(
+    { url: `/projects/${id}/activity`, method: 'GET' },
+    options,
+  )
+}
+
+export const getProjectConfiguration = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<ProjectConfigurationSnapshotDto>>,
+) => {
+  return apiClient<ProjectConfigurationSnapshotDto>(
+    { url: `/projects/${id}/configuration`, method: 'GET' },
+    options,
+  )
+}
+
+export const getProjectMembers = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<ProjectMemberDto[]>>,
+) => {
+  return apiClient<ProjectMemberDto[]>(
+    { url: `/projects/${id}/members`, method: 'GET' },
+    options,
+  )
+}
+
+export const saveProjectMember = (
+  id: string,
+  projectMemberSaveRequest: BodyType<ProjectMemberSaveRequest>,
+  options?: SecondParameter<typeof apiClient<ProjectMemberDto[]>>,
+) => {
+  return apiClient<ProjectMemberDto[]>(
+    {
+      url: `/projects/${id}/members`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: projectMemberSaveRequest,
+    },
+    options,
+  )
+}
+
+export const removeProjectMember = (
+  id: string,
+  memberId: string,
+  options?: SecondParameter<typeof apiClient<void>>,
+) => {
+  return apiClient<void>(
+    { url: `/projects/${id}/members/${memberId}`, method: 'DELETE' },
+    options,
+  )
+}
+
+export const getProjectRequirements = (
+  id: string,
+  params?: GetProjectRequirementsParams,
+  options?: SecondParameter<typeof apiClient<WorkItemListResponse>>,
+) => {
+  return apiClient<WorkItemListResponse>(
+    { url: `/projects/${id}/requirements`, method: 'GET', params },
+    options,
+  )
+}
+
+export const getProjectTasks = (
+  id: string,
+  params?: GetProjectTasksParams,
+  options?: SecondParameter<typeof apiClient<WorkItemListResponse>>,
+) => {
+  return apiClient<WorkItemListResponse>(
+    { url: `/projects/${id}/tasks`, method: 'GET', params },
+    options,
+  )
+}
+
+export const getProjectDefects = (
+  id: string,
+  params?: GetProjectDefectsParams,
+  options?: SecondParameter<typeof apiClient<WorkItemListResponse>>,
+) => {
+  return apiClient<WorkItemListResponse>(
+    { url: `/projects/${id}/defects`, method: 'GET', params },
+    options,
+  )
+}
+
+export const getWorkItems = (
+  params?: GetWorkItemsParams,
+  options?: SecondParameter<typeof apiClient<WorkItemListResponse>>,
+) => {
+  return apiClient<WorkItemListResponse>(
+    { url: `/work-items`, method: 'GET', params },
+    options,
+  )
+}
+
+export const createWorkItem = (
+  workItemCreateRequest: BodyType<WorkItemCreateRequest>,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    {
+      url: `/work-items`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: workItemCreateRequest,
+    },
+    options,
+  )
+}
+
+export const getWorkItem = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    { url: `/work-items/${id}`, method: 'GET' },
+    options,
+  )
+}
+
+export const updateWorkItem = (
+  id: string,
+  workItemUpdateRequest: BodyType<WorkItemUpdateRequest>,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    {
+      url: `/work-items/${id}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: workItemUpdateRequest,
+    },
+    options,
+  )
+}
+
+export const deleteWorkItem = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<void>>,
+) => {
+  return apiClient<void>(
+    { url: `/work-items/${id}`, method: 'DELETE' },
+    options,
+  )
+}
+
+export const transitionWorkItem = (
+  id: string,
+  workItemTransitionRequest: BodyType<WorkItemTransitionRequest>,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    {
+      url: `/work-items/${id}/transitions`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: workItemTransitionRequest,
+    },
+    options,
+  )
+}
+
+export const createWorkItemComment = (
+  id: string,
+  workItemCommentCreateRequest: BodyType<WorkItemCommentCreateRequest>,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    {
+      url: `/work-items/${id}/comments`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: workItemCommentCreateRequest,
+    },
+    options,
+  )
+}
+
+export const createWorkItemRelation = (
+  id: string,
+  workItemRelationCreateRequest: BodyType<WorkItemRelationCreateRequest>,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    {
+      url: `/work-items/${id}/relations`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: workItemRelationCreateRequest,
+    },
+    options,
+  )
+}
+
+export const createDevRecord = (
+  id: string,
+  devRecordCreateRequest: BodyType<DevRecordCreateRequest>,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    {
+      url: `/work-items/${id}/dev-records`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: devRecordCreateRequest,
+    },
+    options,
+  )
+}
+
+export const getProjectSprints = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<SprintDto[]>>,
+) => {
+  return apiClient<SprintDto[]>(
+    { url: `/projects/${id}/sprints`, method: 'GET' },
+    options,
+  )
+}
+
+export const createSprint = (
+  id: string,
+  sprintSaveRequest: BodyType<SprintSaveRequest>,
+  options?: SecondParameter<typeof apiClient<SprintDto[]>>,
+) => {
+  return apiClient<SprintDto[]>(
+    {
+      url: `/projects/${id}/sprints`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: sprintSaveRequest,
+    },
+    options,
+  )
+}
+
+export const getProjectPhases = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<PhaseDto[]>>,
+) => {
+  return apiClient<PhaseDto[]>(
+    { url: `/projects/${id}/phases`, method: 'GET' },
+    options,
+  )
+}
+
+export const updatePhase = (
+  id: string,
+  phaseUpdateRequest: BodyType<PhaseUpdateRequest>,
+  options?: SecondParameter<typeof apiClient<void>>,
+) => {
+  return apiClient<void>(
+    {
+      url: `/phases/${id}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: phaseUpdateRequest,
+    },
+    options,
+  )
+}
+
+export const getProjectVersions = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<VersionDto[]>>,
+) => {
+  return apiClient<VersionDto[]>(
+    { url: `/projects/${id}/versions`, method: 'GET' },
+    options,
+  )
+}
+
+export const createVersion = (
+  id: string,
+  versionSaveRequest: BodyType<VersionSaveRequest>,
+  options?: SecondParameter<typeof apiClient<VersionDto[]>>,
+) => {
+  return apiClient<VersionDto[]>(
+    {
+      url: `/projects/${id}/versions`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: versionSaveRequest,
+    },
+    options,
+  )
+}
+
+export const updateVersion = (
+  id: string,
+  versionSaveRequest: BodyType<VersionSaveRequest>,
+  options?: SecondParameter<typeof apiClient<void>>,
+) => {
+  return apiClient<void>(
+    {
+      url: `/versions/${id}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: versionSaveRequest,
+    },
+    options,
+  )
+}
+
+export const addVersionScope = (
+  id: string,
+  versionScopeRequest: BodyType<VersionScopeRequest>,
+  options?: SecondParameter<typeof apiClient<void>>,
+) => {
+  return apiClient<void>(
+    {
+      url: `/versions/${id}/scope`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: versionScopeRequest,
+    },
+    options,
+  )
+}
+
+export const releaseVersion = (
+  id: string,
+  releaseRequest: BodyType<ReleaseRequest>,
+  options?: SecondParameter<typeof apiClient<void>>,
+) => {
+  return apiClient<void>(
+    {
+      url: `/versions/${id}/releases`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: releaseRequest,
+    },
+    options,
+  )
+}
+
+export const getProjectTestPlans = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<TestPlanDto[]>>,
+) => {
+  return apiClient<TestPlanDto[]>(
+    { url: `/projects/${id}/test-plans`, method: 'GET' },
+    options,
+  )
+}
+
+export const createTestPlan = (
+  id: string,
+  testPlanSaveRequest: BodyType<TestPlanSaveRequest>,
+  options?: SecondParameter<typeof apiClient<TestPlanDto[]>>,
+) => {
+  return apiClient<TestPlanDto[]>(
+    {
+      url: `/projects/${id}/test-plans`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: testPlanSaveRequest,
+    },
+    options,
+  )
+}
+
+export const getProjectTestExecutionBoard = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<TestExecutionBoardDto>>,
+) => {
+  return apiClient<TestExecutionBoardDto>(
+    { url: `/projects/${id}/tests/execution-board`, method: 'GET' },
+    options,
+  )
+}
+
+export const createTestRun = (
+  id: string,
+  testRunCreateRequest: BodyType<TestRunCreateRequest>,
+  options?: SecondParameter<typeof apiClient<TestRunDetailDto>>,
+) => {
+  return apiClient<TestRunDetailDto>(
+    {
+      url: `/projects/${id}/test-runs`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: testRunCreateRequest,
+    },
+    options,
+  )
+}
+
+export const getProjectTestRun = (
+  id: string,
+  runId: string,
+  options?: SecondParameter<typeof apiClient<TestRunDetailDto>>,
+) => {
+  return apiClient<TestRunDetailDto>(
+    { url: `/projects/${id}/test-runs/${runId}`, method: 'GET' },
+    options,
+  )
+}
+
+export const updateTestRunStep = (
+  id: string,
+  stepId: string,
+  testRunStepUpdateRequest: BodyType<TestRunStepUpdateRequest>,
+  options?: SecondParameter<typeof apiClient<void>>,
+) => {
+  return apiClient<void>(
+    {
+      url: `/test-runs/${id}/steps/${stepId}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: testRunStepUpdateRequest,
+    },
+    options,
+  )
+}
+
+export const createOrLinkRunDefect = (
+  id: string,
+  testRunDefectRequest: BodyType<TestRunDefectRequest>,
+  options?: SecondParameter<typeof apiClient<TestRunDetailDto>>,
+) => {
+  return apiClient<TestRunDetailDto>(
+    {
+      url: `/test-runs/${id}/defects`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: testRunDefectRequest,
+    },
+    options,
+  )
+}
+
 export type GetWecomAuthorizeResult = NonNullable<
   Awaited<ReturnType<typeof getWecomAuthorize>>
 >
@@ -410,4 +877,103 @@ export type GetProjectNavigationResult = NonNullable<
 >
 export type GetProjectOverviewResult = NonNullable<
   Awaited<ReturnType<typeof getProjectOverview>>
+>
+export type GetProjectActivityResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectActivity>>
+>
+export type GetProjectConfigurationResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectConfiguration>>
+>
+export type GetProjectMembersResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectMembers>>
+>
+export type SaveProjectMemberResult = NonNullable<
+  Awaited<ReturnType<typeof saveProjectMember>>
+>
+export type RemoveProjectMemberResult = NonNullable<
+  Awaited<ReturnType<typeof removeProjectMember>>
+>
+export type GetProjectRequirementsResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectRequirements>>
+>
+export type GetProjectTasksResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectTasks>>
+>
+export type GetProjectDefectsResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectDefects>>
+>
+export type GetWorkItemsResult = NonNullable<
+  Awaited<ReturnType<typeof getWorkItems>>
+>
+export type CreateWorkItemResult = NonNullable<
+  Awaited<ReturnType<typeof createWorkItem>>
+>
+export type GetWorkItemResult = NonNullable<
+  Awaited<ReturnType<typeof getWorkItem>>
+>
+export type UpdateWorkItemResult = NonNullable<
+  Awaited<ReturnType<typeof updateWorkItem>>
+>
+export type DeleteWorkItemResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWorkItem>>
+>
+export type TransitionWorkItemResult = NonNullable<
+  Awaited<ReturnType<typeof transitionWorkItem>>
+>
+export type CreateWorkItemCommentResult = NonNullable<
+  Awaited<ReturnType<typeof createWorkItemComment>>
+>
+export type CreateWorkItemRelationResult = NonNullable<
+  Awaited<ReturnType<typeof createWorkItemRelation>>
+>
+export type CreateDevRecordResult = NonNullable<
+  Awaited<ReturnType<typeof createDevRecord>>
+>
+export type GetProjectSprintsResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectSprints>>
+>
+export type CreateSprintResult = NonNullable<
+  Awaited<ReturnType<typeof createSprint>>
+>
+export type GetProjectPhasesResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectPhases>>
+>
+export type UpdatePhaseResult = NonNullable<
+  Awaited<ReturnType<typeof updatePhase>>
+>
+export type GetProjectVersionsResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectVersions>>
+>
+export type CreateVersionResult = NonNullable<
+  Awaited<ReturnType<typeof createVersion>>
+>
+export type UpdateVersionResult = NonNullable<
+  Awaited<ReturnType<typeof updateVersion>>
+>
+export type AddVersionScopeResult = NonNullable<
+  Awaited<ReturnType<typeof addVersionScope>>
+>
+export type ReleaseVersionResult = NonNullable<
+  Awaited<ReturnType<typeof releaseVersion>>
+>
+export type GetProjectTestPlansResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectTestPlans>>
+>
+export type CreateTestPlanResult = NonNullable<
+  Awaited<ReturnType<typeof createTestPlan>>
+>
+export type GetProjectTestExecutionBoardResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectTestExecutionBoard>>
+>
+export type CreateTestRunResult = NonNullable<
+  Awaited<ReturnType<typeof createTestRun>>
+>
+export type GetProjectTestRunResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectTestRun>>
+>
+export type UpdateTestRunStepResult = NonNullable<
+  Awaited<ReturnType<typeof updateTestRunStep>>
+>
+export type CreateOrLinkRunDefectResult = NonNullable<
+  Awaited<ReturnType<typeof createOrLinkRunDefect>>
 >
