@@ -5,6 +5,8 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { DevRecordDto } from './devRecordDto'
+import type { RequirementAcceptanceDto } from './requirementAcceptanceDto'
+import type { RequirementDetailDto } from './requirementDetailDto'
 import type { TestRunDto } from './testRunDto'
 import type { WorkflowTransitionDto } from './workflowTransitionDto'
 import type { WorkItemCommentDto } from './workItemCommentDto'
@@ -15,6 +17,8 @@ import type { WorkItemSummaryDto } from './workItemSummaryDto'
 export type WorkItemDto = WorkItemSummaryDto & {
   description: string
   acceptance: string
+  requirement_detail?: RequirementDetailDto | null
+  requirement_acceptances: RequirementAcceptanceDto[]
   available_transitions: WorkflowTransitionDto[]
   comments: WorkItemCommentDto[]
   relations: WorkItemRelationDto[]

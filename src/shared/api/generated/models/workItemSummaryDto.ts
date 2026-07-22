@@ -4,7 +4,10 @@
  * Project Management Backend API
  * OpenAPI spec version: 0.2.0
  */
+import type { TaskDetailDto } from './taskDetailDto'
 import type { UserLiteDto } from './userLiteDto'
+import type { WorkItemParentDto } from './workItemParentDto'
+import type { WorkItemSummaryDtoAcceptanceStatus } from './workItemSummaryDtoAcceptanceStatus'
 import type { WorkItemSummaryDtoType } from './workItemSummaryDtoType'
 
 export interface WorkItemSummaryDto {
@@ -23,6 +26,8 @@ export interface WorkItemSummaryDto {
   reporter: UserLiteDto
   created_by?: UserLiteDto | null
   updated_by?: UserLiteDto | null
+  parent?: WorkItemParentDto | null
+  task_detail?: TaskDetailDto | null
   sprint_id?: string | null
   phase_id?: string | null
   version_id?: string | null
@@ -37,6 +42,7 @@ export interface WorkItemSummaryDto {
    * @maximum 100
    */
   progress_percent: number
+  acceptance_status: WorkItemSummaryDtoAcceptanceStatus
   is_archived: boolean
   row_version: number
   created_at: string

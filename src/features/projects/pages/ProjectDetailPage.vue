@@ -29,24 +29,11 @@
           <EButton v-if="canManageProject" @click="openProjectEdit">
             编辑项目
           </EButton>
-          <EButton
-            :disabled="isProjectArchived"
-            @click="openCreateWorkItem('story')"
-          >
+          <EButton :disabled="isProjectArchived" @click="openCreateRequirement">
             新建需求
           </EButton>
-          <EButton
-            :disabled="isProjectArchived"
-            @click="openCreateWorkItem('task')"
-          >
+          <EButton :disabled="isProjectArchived" @click="openCreateTask">
             新建任务
-          </EButton>
-          <EButton
-            type="primary"
-            :disabled="isProjectArchived"
-            @click="openCreateWorkItem('bug')"
-          >
-            新建缺陷
           </EButton>
         </div>
       </header>
@@ -133,10 +120,16 @@
         </section>
 
         <WorkItemListPanel
-          v-else-if="['requirements', 'tasks', 'defects'].includes(section)"
+          v-else-if="['requirements', 'tasks'].includes(section)"
           :key="section"
           :kind="section"
         />
+        <section v-else-if="section === 'defects'" class="project-detail-panel">
+          <EmptyState
+            title="模块待补充"
+            description="缺陷模块将在后续模块确认后接入统一工作项组件。"
+          />
+        </section>
         <SprintPanel v-else-if="section === 'sprints'" />
         <PhasePanel v-else-if="section === 'phases'" />
         <VersionPanel v-else-if="section === 'versions'" />
@@ -156,17 +149,21 @@
         </section>
       </main>
 
-      <EDialog v-model="createDialogVisible" title="创建工作项" width="760px">
+      <EDialog
+        v-model="createDialogVisible"
+        :title="createMode === 'task' ? '创建任务' : '创建需求'"
+        width="760px"
+      >
         <EForm label-width="96px">
-          <EFormItem label="类型">
-            <ESelect v-model="workItemForm.type">
-              <EOption label="Story" value="story" />
-              <EOption label="Task" value="task" />
-              <EOption label="Bug" value="bug" />
-            </ESelect>
-          </EFormItem>
           <EFormItem label="标题">
             <EInput v-model="workItemForm.title" />
+          </EFormItem>
+          <EFormItem label="优先级">
+            <ESelect v-model="workItemForm.priority">
+              <EOption label="高" value="high" />
+              <EOption label="中" value="medium" />
+              <EOption label="低" value="low" />
+            </ESelect>
           </EFormItem>
           <EFormItem label="负责人">
             <ESelect v-model="workItemForm.assignee_id" clearable>
@@ -194,10 +191,59 @@
               placeholder="选择日期"
             />
           </EFormItem>
+          <EFormItem v-if="createMode === 'requirement'" label="需求来源">
+            <EInput v-model="workItemForm.requirement_detail.source" />
+          </EFormItem>
+          <EFormItem v-if="createMode === 'requirement'" label="业务价值">
+            <EInput
+              v-model="workItemForm.requirement_detail.business_value"
+              type="textarea"
+              :rows="3"
+            />
+          </EFormItem>
+          <EFormItem v-if="createMode === 'task'" label="分类">
+            <ESelect v-model="workItemForm.task_detail.category">
+              <EOption
+                v-for="option in taskCategoryOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </ESelect>
+          </EFormItem>
+          <EFormItem v-if="createMode === 'task'" label="父需求">
+            <ESelect v-model="workItemForm.parent_id" clearable>
+              <EOption
+                v-for="item in requirementOptionsQuery.data.value?.data ?? []"
+                :key="item.id"
+                :label="`${item.number} ${item.title}`"
+                :value="item.id"
+              />
+            </ESelect>
+          </EFormItem>
+          <EFormItem v-if="createMode === 'task'" label="预估工时">
+            <EInput v-model.number="workItemForm.estimated_hours" />
+          </EFormItem>
+          <EFormItem v-if="createMode === 'task'" label="剩余工时">
+            <EInput v-model.number="workItemForm.remaining_hours" />
+          </EFormItem>
+          <EFormItem v-if="createMode === 'task'" label="代码评审">
+            <ESelect v-model="workItemForm.task_detail.review_required">
+              <EOption label="需要" :value="true" />
+              <EOption label="不需要" :value="false" />
+            </ESelect>
+          </EFormItem>
+          <EFormItem v-if="createMode === 'task'" label="技术说明">
+            <EInput
+              v-model="workItemForm.task_detail.technical_notes"
+              type="textarea"
+              :rows="3"
+            />
+          </EFormItem>
           <EFormItem label="描述">
             <RichTextEditor v-model="workItemForm.description" />
           </EFormItem>
-          <EFormItem label="验收标准">
+          <EFormItem v-if="createMode === 'requirement'" label="验收标准">
             <RichTextEditor v-model="workItemForm.acceptance" />
           </EFormItem>
         </EForm>
@@ -319,6 +365,7 @@ import {
   reactive,
   ref,
   type PropType,
+  watch,
 } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
@@ -391,6 +438,23 @@ const projectOwnerOptions = computed(
   () => projectCreateTemplateQuery.data.value?.owners ?? [],
 )
 const currentUser = computed(() => currentUserQuery.data.value)
+const acceptanceStatusLabel: Record<string, string> = {
+  not_started: '未验收',
+  accepted: '已通过',
+  rejected: '已拒绝',
+}
+const taskCategoryLabel: Record<string, string> = {
+  development: '开发',
+  design: '设计',
+  research: '调研',
+  refactor: '重构',
+  integration: '联调',
+  documentation: '文档',
+  other: '其他',
+}
+const taskCategoryOptions = Object.entries(taskCategoryLabel).map(
+  ([value, label]) => ({ value, label }),
+)
 const isProjectArchived = computed(
   () => navigation.value?.project.status === 'archived',
 )
@@ -423,7 +487,23 @@ const membersQuery = useQuery({
   enabled: computed(() => Boolean(projectId.value)),
 })
 
+const requirementOptionsQuery = useQuery({
+  queryKey: computed(() => [
+    'projects',
+    projectId.value,
+    'requirements',
+    'options',
+  ]),
+  queryFn: () =>
+    projectDetailApi.workItems(projectId.value, 'requirements', {
+      page: 1,
+      page_size: 100,
+    }),
+  enabled: computed(() => Boolean(projectId.value)),
+})
+
 const createDialogVisible = ref(false)
+const createMode = ref<'requirement' | 'task'>('requirement')
 const projectEditVisible = ref(false)
 type WorkItemForm = WorkItemCreatePayload & {
   title: string
@@ -431,6 +511,16 @@ type WorkItemForm = WorkItemCreatePayload & {
   acceptance: string
   start_at: string
   end_at: string
+  requirement_detail: {
+    source: string
+    business_value: string
+  }
+  task_detail: {
+    category: string
+    technical_notes: string
+    review_required: boolean
+    code_review_url: string
+  }
 }
 
 const workItemForm = reactive<WorkItemForm>({
@@ -446,6 +536,16 @@ const workItemForm = reactive<WorkItemForm>({
   story_points: 0,
   estimated_hours: 0,
   remaining_hours: 0,
+  requirement_detail: {
+    source: '',
+    business_value: '',
+  },
+  task_detail: {
+    category: 'development',
+    technical_notes: '',
+    review_required: true,
+    code_review_url: '',
+  },
 })
 
 const createWorkItemMutation = useMutation({
@@ -533,31 +633,137 @@ function submitProjectEdit() {
   )
 }
 
-function openCreateWorkItem(type: string) {
+function openCreateRequirement() {
+  createMode.value = 'requirement'
   Object.assign(workItemForm, {
     project_id: projectId.value,
-    type,
+    type: 'story',
     title: '',
     description: '<p></p>',
     acceptance: '<p></p>',
-    priority: type === 'bug' ? 'high' : 'medium',
-    severity: type === 'bug' ? 'major' : '',
+    priority: 'medium',
+    severity: '',
     start_at: '',
     end_at: '',
     story_points: 0,
     estimated_hours: 0,
     remaining_hours: 0,
     assignee_id: undefined,
+    requirement_detail: {
+      source: '',
+      business_value: '',
+    },
+    task_detail: {
+      category: 'development',
+      technical_notes: '',
+      review_required: true,
+      code_review_url: '',
+    },
   })
   createDialogVisible.value = true
 }
 
+function openCreateTask() {
+  createMode.value = 'task'
+  Object.assign(workItemForm, {
+    project_id: projectId.value,
+    type: 'task',
+    title: '',
+    description: '<p></p>',
+    acceptance: '',
+    priority: 'medium',
+    severity: '',
+    start_at: '',
+    end_at: '',
+    story_points: 0,
+    estimated_hours: 0,
+    remaining_hours: 0,
+    assignee_id: undefined,
+    parent_id: undefined,
+    requirement_detail: {
+      source: '',
+      business_value: '',
+    },
+    task_detail: {
+      category: 'development',
+      technical_notes: '',
+      review_required: true,
+      code_review_url: '',
+    },
+  })
+  createDialogVisible.value = true
+}
+
+function isRichTextBlank(value: string) {
+  const normalized = value.trim()
+  return (
+    !normalized ||
+    normalized === '<p></p>' ||
+    normalized === '<p><br></p>' ||
+    normalized === '<p>&nbsp;</p>'
+  )
+}
+
 function submitWorkItem() {
   if (!workItemForm.title.trim()) {
-    ElMessage.warning('Please enter a title')
+    ElMessage.warning(
+      createMode.value === 'task' ? '请输入任务标题' : '请输入需求标题',
+    )
     return
   }
-  createWorkItemMutation.mutate({ ...workItemForm })
+  if (!workItemForm.assignee_id) {
+    ElMessage.warning(
+      createMode.value === 'task' ? '请选择任务负责人' : '请选择需求负责人',
+    )
+    return
+  }
+  if (
+    createMode.value === 'requirement' &&
+    (!workItemForm.start_at || !workItemForm.end_at)
+  ) {
+    ElMessage.warning('请选择计划开始和结束时间')
+    return
+  }
+  if (
+    workItemForm.start_at &&
+    workItemForm.end_at &&
+    workItemForm.start_at > workItemForm.end_at
+  ) {
+    ElMessage.warning('计划开始时间不能晚于结束时间')
+    return
+  }
+  if (
+    createMode.value === 'requirement' &&
+    isRichTextBlank(workItemForm.description)
+  ) {
+    ElMessage.warning('请输入需求描述')
+    return
+  }
+  if (
+    createMode.value === 'requirement' &&
+    isRichTextBlank(workItemForm.acceptance)
+  ) {
+    ElMessage.warning('请输入验收标准')
+    return
+  }
+  if (
+    createMode.value === 'task' &&
+    ((workItemForm.estimated_hours ?? 0) < 0 ||
+      (workItemForm.remaining_hours ?? 0) < 0)
+  ) {
+    ElMessage.warning('任务工时不能为负数')
+    return
+  }
+  createWorkItemMutation.mutate({
+    ...workItemForm,
+    type: createMode.value === 'task' ? 'task' : 'story',
+    requirement_detail:
+      createMode.value === 'requirement'
+        ? { ...workItemForm.requirement_detail }
+        : null,
+    task_detail:
+      createMode.value === 'task' ? { ...workItemForm.task_detail } : null,
+  })
 }
 
 const WorkItemListPanel = defineComponent({
@@ -597,11 +803,28 @@ const WorkItemListPanel = defineComponent({
       },
     })
     const title = computed(() =>
+      props.kind === 'tasks' ? '任务管理' : '需求管理',
+    )
+    const statusOptions = computed(() =>
       props.kind === 'tasks'
-        ? 'Tasks'
-        : props.kind === 'defects'
-          ? 'Defects'
-          : 'Requirements',
+        ? [
+            { label: '待处理', value: 'pending' },
+            { label: '进行中', value: 'in_progress' },
+            { label: '代码评审', value: 'code_review' },
+            { label: '待测试', value: 'ready_for_test' },
+            { label: '已完成', value: 'completed' },
+            { label: '已关闭', value: 'closed' },
+          ]
+        : [
+            { label: '草稿', value: 'draft' },
+            { label: '待评审', value: 'reviewing' },
+            { label: '已就绪', value: 'ready' },
+            { label: '开发中', value: 'developing' },
+            { label: '测试中', value: 'testing' },
+            { label: '待验收', value: 'accepting' },
+            { label: '已完成', value: 'completed' },
+            { label: '已关闭', value: 'closed' },
+          ],
     )
     return () =>
       h('section', { class: 'project-detail-panel' }, [
@@ -621,35 +844,13 @@ const WorkItemListPanel = defineComponent({
                 placeholder: 'Status',
                 clearable: true,
               },
-              () => [
-                h(EOption, {
-                  label: 'Open',
-                  value:
-                    props.kind === 'defects'
-                      ? 'new'
-                      : props.kind === 'tasks'
-                        ? 'todo'
-                        : 'draft',
-                }),
-                h(EOption, {
-                  label: 'Active',
-                  value:
-                    props.kind === 'defects'
-                      ? 'triaged'
-                      : props.kind === 'tasks'
-                        ? 'doing'
-                        : 'reviewing',
-                }),
-                h(EOption, {
-                  label: 'Done',
-                  value:
-                    props.kind === 'defects'
-                      ? 'verified'
-                      : props.kind === 'tasks'
-                        ? 'done'
-                        : 'accepted',
-                }),
-              ],
+              () =>
+                statusOptions.value.map((option) =>
+                  h(EOption, {
+                    label: option.label,
+                    value: option.value,
+                  }),
+                ),
             ),
           ]),
         ]),
@@ -683,9 +884,59 @@ const WorkItemListPanel = defineComponent({
             }),
             h(
               ETableColumn,
-              { label: 'Assignee', width: 140 },
+              { label: '负责人', width: 140 },
               { default: ({ row }: any) => row.assignee?.display_name ?? '-' },
             ),
+            props.kind === 'tasks'
+              ? h(
+                  ETableColumn,
+                  { label: '父需求', minWidth: 220 },
+                  {
+                    default: ({ row }: any) =>
+                      row.parent
+                        ? `${row.parent.number} ${row.parent.title}`
+                        : '独立任务',
+                  },
+                )
+              : h(
+                  ETableColumn,
+                  { label: '验收', width: 120 },
+                  {
+                    default: ({ row }: any) =>
+                      acceptanceStatusLabel[row.acceptance_status] ?? '-',
+                  },
+                ),
+            props.kind === 'tasks'
+              ? h(ETableColumn, {
+                  prop: 'remaining_hours',
+                  label: '剩余工时',
+                  width: 120,
+                })
+              : null,
+            props.kind === 'tasks'
+              ? h(
+                  ETableColumn,
+                  { label: '代码评审', width: 120 },
+                  {
+                    default: ({ row }: any) =>
+                      row.task_detail?.review_required
+                        ? row.task_detail?.code_review_url
+                          ? '已关联'
+                          : '需要'
+                        : '不需要',
+                  },
+                )
+              : null,
+            h(ETableColumn, {
+              prop: 'end_at',
+              label: '计划结束',
+              width: 180,
+            }),
+            h(ETableColumn, {
+              prop: 'updated_at',
+              label: '更新时间',
+              width: 160,
+            }),
           ],
         ),
       ])
@@ -697,6 +948,7 @@ const WorkItemDetailPanel = defineComponent({
     const activeTab = ref('detail')
     const comment = ref('')
     const transitionComment = ref('')
+    const acceptanceComment = ref('')
     const devRecord = reactive({
       record_type: 'branch',
       title: '',
@@ -713,6 +965,8 @@ const WorkItemDetailPanel = defineComponent({
       title: '',
       description: '',
       acceptance: '',
+      parent_id: '',
+      assignee_id: '',
       priority: 'medium',
       severity: '',
       start_at: '',
@@ -720,15 +974,60 @@ const WorkItemDetailPanel = defineComponent({
       story_points: 0,
       estimated_hours: 0,
       remaining_hours: 0,
+      requirement_detail: {
+        source: '',
+        business_value: '',
+      },
+      task_detail: {
+        category: 'development',
+        technical_notes: '',
+        review_required: true,
+        code_review_url: '',
+      },
     })
+    watch(
+      () => query.data.value,
+      (item) => {
+        if (!item) {
+          return
+        }
+        Object.assign(draft, {
+          title: item.title,
+          description: item.description,
+          acceptance: item.acceptance,
+          parent_id: item.parent?.id ?? '',
+          assignee_id: item.assignee?.id ?? '',
+          priority: item.priority,
+          severity: item.severity,
+          start_at: item.start_at,
+          end_at: item.end_at,
+          story_points: item.story_points,
+          estimated_hours: item.estimated_hours,
+          remaining_hours: item.remaining_hours,
+          requirement_detail: {
+            source: item.requirement_detail?.source ?? '',
+            business_value: item.requirement_detail?.business_value ?? '',
+          },
+          task_detail: {
+            category: item.task_detail?.category ?? 'development',
+            technical_notes: item.task_detail?.technical_notes ?? '',
+            review_required: item.task_detail?.review_required ?? true,
+            code_review_url: item.task_detail?.code_review_url ?? '',
+          },
+        })
+      },
+      { immediate: true },
+    )
     const saveMutation = useMutation({
       mutationFn: (item: WorkItem) =>
         projectDetailApi.updateWorkItem(item.id, {
           project_id: item.project_id,
           type: item.type,
           title: draft.title,
+          parent_id: draft.parent_id || null,
           description: draft.description,
           acceptance: draft.acceptance,
+          assignee_id: draft.assignee_id || null,
           priority: draft.priority,
           severity: draft.severity,
           start_at: draft.start_at,
@@ -736,9 +1035,30 @@ const WorkItemDetailPanel = defineComponent({
           story_points: draft.story_points,
           estimated_hours: draft.estimated_hours,
           remaining_hours: draft.remaining_hours,
+          requirement_detail: { ...draft.requirement_detail },
+          task_detail: { ...draft.task_detail } as any,
           row_version: item.row_version,
         }),
       onSuccess: () => query.refetch(),
+    })
+    const acceptanceMutation = useMutation({
+      mutationFn: ({
+        item,
+        status,
+      }: {
+        item: WorkItem
+        status: 'accepted' | 'rejected'
+      }) =>
+        projectDetailApi.createRequirementAcceptance(item.id, {
+          status,
+          comment: acceptanceComment.value,
+          evidence_urls: [],
+          row_version: item.row_version,
+        }),
+      onSuccess: () => {
+        acceptanceComment.value = ''
+        return query.refetch()
+      },
     })
     const transitionMutation = useMutation({
       mutationFn: ({ item, key }: { item: WorkItem; key: string }) =>
@@ -761,21 +1081,19 @@ const WorkItemDetailPanel = defineComponent({
         projectDetailApi.createDevRecord(item.id, devRecord as any),
       onSuccess: () => query.refetch(),
     })
+    const submitAcceptance = (
+      item: WorkItem,
+      status: 'accepted' | 'rejected',
+    ) => {
+      if (status === 'rejected' && !acceptanceComment.value.trim()) {
+        ElMessage.warning('请填写验收拒绝原因')
+        return
+      }
+      acceptanceMutation.mutate({ item, status })
+    }
     return () => {
       const item = query.data.value
       if (!item) return h(AsyncPageSkeleton)
-      Object.assign(draft, {
-        title: item.title,
-        description: item.description,
-        acceptance: item.acceptance,
-        priority: item.priority,
-        severity: item.severity,
-        start_at: item.start_at,
-        end_at: item.end_at,
-        story_points: item.story_points,
-        estimated_hours: item.estimated_hours,
-        remaining_hours: item.remaining_hours,
-      })
       return h('section', { class: 'project-detail-panel' }, [
         h('div', { class: 'panel-heading' }, [
           h('div', [
@@ -800,6 +1118,10 @@ const WorkItemDetailPanel = defineComponent({
           ),
           h('span', `Type: ${item.type}`),
           h('span', `Priority: ${item.priority}`),
+          h(
+            'span',
+            `验收：${acceptanceStatusLabel[item.acceptance_status] ?? '-'}`,
+          ),
         ]),
         h('div', { class: 'transition-bar' }, [
           h(EInput, {
@@ -847,6 +1169,60 @@ const WorkItemDetailPanel = defineComponent({
                     'onUpdate:modelValue': (v: string) => (draft.title = v),
                   }),
                 ),
+                h(EFormItem, { label: 'Assignee' }, () =>
+                  h(
+                    ESelect,
+                    {
+                      modelValue: draft.assignee_id,
+                      'onUpdate:modelValue': (v: string) =>
+                        (draft.assignee_id = v),
+                      clearable: true,
+                    },
+                    () =>
+                      (membersQuery.data.value ?? []).map((member: any) =>
+                        h(EOption, {
+                          label: member.user.display_name,
+                          value: member.user.id,
+                        }),
+                      ),
+                  ),
+                ),
+                h(EFormItem, { label: 'Priority' }, () =>
+                  h(
+                    ESelect,
+                    {
+                      modelValue: draft.priority,
+                      'onUpdate:modelValue': (v: string) =>
+                        (draft.priority = v),
+                    },
+                    () => [
+                      h(EOption, { label: 'High', value: 'high' }),
+                      h(EOption, { label: 'Medium', value: 'medium' }),
+                      h(EOption, { label: 'Low', value: 'low' }),
+                    ],
+                  ),
+                ),
+                item.type === 'task'
+                  ? h(EFormItem, { label: 'Parent' }, () =>
+                      h(
+                        ESelect,
+                        {
+                          modelValue: draft.parent_id,
+                          'onUpdate:modelValue': (v: string) =>
+                            (draft.parent_id = v),
+                          clearable: true,
+                        },
+                        () =>
+                          (requirementOptionsQuery.data.value?.data ?? []).map(
+                            (requirement) =>
+                              h(EOption, {
+                                label: `${requirement.number} ${requirement.title}`,
+                                value: requirement.id,
+                              }),
+                          ),
+                      ),
+                    )
+                  : null,
                 h(EFormItem, { label: 'Start' }, () =>
                   h(EDatePicker, {
                     modelValue: draft.start_at,
@@ -865,6 +1241,86 @@ const WorkItemDetailPanel = defineComponent({
                     placeholder: 'Select date',
                   }),
                 ),
+                h(EFormItem, { label: 'Source' }, () =>
+                  h(EInput, {
+                    modelValue: draft.requirement_detail.source,
+                    'onUpdate:modelValue': (v: string) =>
+                      (draft.requirement_detail.source = v),
+                  }),
+                ),
+                h(EFormItem, { label: 'Value' }, () =>
+                  h(EInput, {
+                    modelValue: draft.requirement_detail.business_value,
+                    'onUpdate:modelValue': (v: string) =>
+                      (draft.requirement_detail.business_value = v),
+                    type: 'textarea',
+                    rows: 3,
+                  }),
+                ),
+                item.type === 'task'
+                  ? h(EFormItem, { label: 'Category' }, () =>
+                      h(
+                        ESelect,
+                        {
+                          modelValue: draft.task_detail.category,
+                          'onUpdate:modelValue': (v: string) =>
+                            (draft.task_detail.category = v),
+                        },
+                        () =>
+                          taskCategoryOptions.map((option) =>
+                            h(EOption, {
+                              label: option.label,
+                              value: option.value,
+                            }),
+                          ),
+                      ),
+                    )
+                  : null,
+                item.type === 'task'
+                  ? h(EFormItem, { label: 'Remaining' }, () =>
+                      h(EInput, {
+                        modelValue: draft.remaining_hours,
+                        'onUpdate:modelValue': (v: number) =>
+                          (draft.remaining_hours = Number(v)),
+                      }),
+                    )
+                  : null,
+                item.type === 'task'
+                  ? h(EFormItem, { label: 'Review' }, () =>
+                      h(
+                        ESelect,
+                        {
+                          modelValue: draft.task_detail.review_required,
+                          'onUpdate:modelValue': (v: boolean) =>
+                            (draft.task_detail.review_required = v),
+                        },
+                        () => [
+                          h(EOption, { label: 'Required', value: true }),
+                          h(EOption, { label: 'Not Required', value: false }),
+                        ],
+                      ),
+                    )
+                  : null,
+                item.type === 'task'
+                  ? h(EFormItem, { label: 'Review URL' }, () =>
+                      h(EInput, {
+                        modelValue: draft.task_detail.code_review_url,
+                        'onUpdate:modelValue': (v: string) =>
+                          (draft.task_detail.code_review_url = v),
+                      }),
+                    )
+                  : null,
+                item.type === 'task'
+                  ? h(EFormItem, { label: 'Tech Notes' }, () =>
+                      h(EInput, {
+                        modelValue: draft.task_detail.technical_notes,
+                        'onUpdate:modelValue': (v: string) =>
+                          (draft.task_detail.technical_notes = v),
+                        type: 'textarea',
+                        rows: 3,
+                      }),
+                    )
+                  : null,
                 h(EFormItem, { label: 'Description' }, () =>
                   h(RichTextEditor, {
                     modelValue: draft.description,
@@ -873,11 +1329,13 @@ const WorkItemDetailPanel = defineComponent({
                   }),
                 ),
                 h(EFormItem, { label: 'Acceptance' }, () =>
-                  h(RichTextEditor, {
-                    modelValue: draft.acceptance,
-                    'onUpdate:modelValue': (v: string) =>
-                      (draft.acceptance = v),
-                  }),
+                  item.type === 'story'
+                    ? h(RichTextEditor, {
+                        modelValue: draft.acceptance,
+                        'onUpdate:modelValue': (v: string) =>
+                          (draft.acceptance = v),
+                      })
+                    : h('span', '-'),
                 ),
                 h(EFormItem, () =>
                   h(
@@ -916,6 +1374,82 @@ const WorkItemDetailPanel = defineComponent({
                 () => 'Post Comment',
               ),
             ]),
+            item.type === 'story'
+              ? h(ETabPane, { label: 'Acceptance', name: 'acceptance' }, () => [
+                  h('div', { class: 'detail-summary' }, [
+                    h(
+                      'span',
+                      `当前状态：${acceptanceStatusLabel[item.requirement_detail?.acceptance_status ?? item.acceptance_status] ?? '-'}`,
+                    ),
+                    h(
+                      'span',
+                      `验收人：${item.requirement_detail?.accepted_by?.display_name ?? '-'}`,
+                    ),
+                    h(
+                      'span',
+                      `验收时间：${item.requirement_detail?.accepted_at ?? '-'}`,
+                    ),
+                  ]),
+                  item.requirement_detail?.rejected_reason
+                    ? h(
+                        'p',
+                        `拒绝原因：${item.requirement_detail.rejected_reason}`,
+                      )
+                    : null,
+                  h(EInput, {
+                    modelValue: acceptanceComment.value,
+                    'onUpdate:modelValue': (v: string) =>
+                      (acceptanceComment.value = v),
+                    type: 'textarea',
+                    rows: 3,
+                    placeholder: '填写验收意见；拒绝时必填',
+                  }),
+                  item.status === 'accepting'
+                    ? h('div', { class: 'inline-form' }, [
+                        h(
+                          EButton,
+                          {
+                            type: 'primary',
+                            loading: acceptanceMutation.isPending.value,
+                            onClick: () => submitAcceptance(item, 'accepted'),
+                          },
+                          () => '验收通过',
+                        ),
+                        h(
+                          EButton,
+                          {
+                            type: 'danger',
+                            loading: acceptanceMutation.isPending.value,
+                            onClick: () => submitAcceptance(item, 'rejected'),
+                          },
+                          () => '验收拒绝',
+                        ),
+                      ])
+                    : null,
+                  h(ETable, { data: item.requirement_acceptances }, () => [
+                    h(ETableColumn, {
+                      label: '结果',
+                      width: 120,
+                      prop: 'status',
+                    }),
+                    h(ETableColumn, {
+                      label: '意见',
+                      prop: 'comment',
+                      minWidth: 220,
+                    }),
+                    h(ETableColumn, {
+                      label: '处理人',
+                      width: 140,
+                      prop: 'accepted_by.display_name',
+                    }),
+                    h(ETableColumn, {
+                      label: '时间',
+                      width: 180,
+                      prop: 'accepted_at',
+                    }),
+                  ]),
+                ])
+              : null,
             h(ETabPane, { label: 'Dev', name: 'dev' }, () => [
               h(ETable, { data: item.dev_records }, () => [
                 h(ETableColumn, {

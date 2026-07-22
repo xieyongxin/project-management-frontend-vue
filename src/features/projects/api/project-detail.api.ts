@@ -1,6 +1,7 @@
 import {
   createDevRecord,
   createOrLinkRunDefect,
+  createRequirementAcceptance,
   createSprint,
   createVersion,
   createWorkItem,
@@ -30,6 +31,7 @@ import type {
   DevRecordCreateRequest,
   PhaseUpdateRequest,
   ProjectMemberSaveRequest,
+  RequirementAcceptanceRequest,
   ReleaseRequest,
   SprintSaveRequest,
   TestRunDefectRequest,
@@ -81,6 +83,13 @@ export const projectDetailApi = {
 
   transitionWorkItem(id: string, payload: WorkItemTransitionRequest) {
     return transitionWorkItem(id, payload)
+  },
+
+  createRequirementAcceptance(
+    id: string,
+    payload: RequirementAcceptanceRequest,
+  ) {
+    return createRequirementAcceptance(id, payload)
   },
 
   createWorkItemComment(id: string, payload: WorkItemCommentCreateRequest) {

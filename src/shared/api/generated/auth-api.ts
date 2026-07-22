@@ -37,6 +37,7 @@ import type {
   ProjectTypeConfigUpdate,
   ProjectUpdateRequest,
   ReleaseRequest,
+  RequirementAcceptanceRequest,
   RestoreDefaultWorkflowDefinitionBody,
   RoleCreate,
   RoleDto,
@@ -606,6 +607,22 @@ export const transitionWorkItem = (
   )
 }
 
+export const createRequirementAcceptance = (
+  id: string,
+  requirementAcceptanceRequest: BodyType<RequirementAcceptanceRequest>,
+  options?: SecondParameter<typeof apiClient<WorkItemDto>>,
+) => {
+  return apiClient<WorkItemDto>(
+    {
+      url: `/work-items/${id}/acceptances`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: requirementAcceptanceRequest,
+    },
+    options,
+  )
+}
+
 export const createWorkItemComment = (
   id: string,
   workItemCommentCreateRequest: BodyType<WorkItemCommentCreateRequest>,
@@ -1009,6 +1026,9 @@ export type DeleteWorkItemResult = NonNullable<
 >
 export type TransitionWorkItemResult = NonNullable<
   Awaited<ReturnType<typeof transitionWorkItem>>
+>
+export type CreateRequirementAcceptanceResult = NonNullable<
+  Awaited<ReturnType<typeof createRequirementAcceptance>>
 >
 export type CreateWorkItemCommentResult = NonNullable<
   Awaited<ReturnType<typeof createWorkItemComment>>
