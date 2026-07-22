@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import {
+  getCurrentUser,
   getProjectTypeConfigs,
   getRoleDefinitions,
   getWorkflowDefinitions,
@@ -31,6 +32,12 @@ export const useRoleDefinitions = () =>
   useQuery({
     queryKey: configurationKeys.roles(),
     queryFn: getRoleDefinitions,
+  })
+
+export const useConfigurationCurrentUser = () =>
+  useQuery({
+    queryKey: [...configurationKeys.all, 'current-user'] as const,
+    queryFn: getCurrentUser,
   })
 
 export const useSaveProjectTypeConfig = () => {

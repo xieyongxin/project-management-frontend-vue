@@ -14,4 +14,5 @@ export const WorkItemSummaryDtoType = {
   story: 'story',
   task: 'task',
   bug: 'bug',
+  issue: 'issue',
 } as const

@@ -16,7 +16,7 @@
         <template #default="{ row }: { row: RoleConfig }">
           <ElSwitch
             v-model="row.enabled"
-            :disabled="row.is_system"
+            :disabled="row.is_system || !canWrite"
             @change="() => emit('saveRole', row)"
           />
         </template>
@@ -41,6 +41,7 @@ import type { RoleConfig } from '../model/configuration.types'
 defineProps<{
   roles: RoleConfig[]
   loading: boolean
+  canWrite: boolean
 }>()
 
 const emit = defineEmits<{

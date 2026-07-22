@@ -143,8 +143,6 @@
         <EForm label-width="96px">
           <EFormItem label="类型">
             <ESelect v-model="workItemForm.type">
-              <EOption label="Epic" value="epic" />
-              <EOption label="Feature" value="feature" />
               <EOption label="Story" value="story" />
               <EOption label="Task" value="task" />
               <EOption label="Bug" value="bug" />
@@ -162,6 +160,22 @@
                 :value="member.user.id"
               />
             </ESelect>
+          </EFormItem>
+          <EFormItem label="计划开始">
+            <EDatePicker
+              v-model="workItemForm.start_at"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="选择日期"
+            />
+          </EFormItem>
+          <EFormItem label="计划结束">
+            <EDatePicker
+              v-model="workItemForm.end_at"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="选择日期"
+            />
           </EFormItem>
           <EFormItem label="描述">
             <RichTextEditor v-model="workItemForm.description" />
@@ -190,6 +204,7 @@ import { ArrowDown } from '@element-plus/icons-vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import {
   ElButton,
+  ElDatePicker,
   ElDialog,
   ElDropdown,
   ElDropdownItem,
@@ -250,6 +265,7 @@ const router = useRouter()
 const queryClient = useQueryClient()
 
 const EButton = ElButton as any
+const EDatePicker = ElDatePicker as any
 const EDialog = ElDialog as any
 const EDropdown = ElDropdown as any
 const EDropdownItem = ElDropdownItem as any
@@ -294,6 +310,8 @@ type WorkItemForm = WorkItemCreatePayload & {
   title: string
   description: string
   acceptance: string
+  start_at: string
+  end_at: string
 }
 
 const workItemForm = reactive<WorkItemForm>({
@@ -304,6 +322,8 @@ const workItemForm = reactive<WorkItemForm>({
   acceptance: '<p></p>',
   priority: 'medium',
   severity: '',
+  start_at: '',
+  end_at: '',
   story_points: 0,
   estimated_hours: 0,
   remaining_hours: 0,
@@ -328,6 +348,8 @@ function openCreateWorkItem(type: string) {
     acceptance: '<p></p>',
     priority: type === 'bug' ? 'high' : 'medium',
     severity: type === 'bug' ? 'major' : '',
+    start_at: '',
+    end_at: '',
     story_points: 0,
     estimated_hours: 0,
     remaining_hours: 0,
@@ -499,6 +521,8 @@ const WorkItemDetailPanel = defineComponent({
       acceptance: '',
       priority: 'medium',
       severity: '',
+      start_at: '',
+      end_at: '',
       story_points: 0,
       estimated_hours: 0,
       remaining_hours: 0,
@@ -513,6 +537,8 @@ const WorkItemDetailPanel = defineComponent({
           acceptance: draft.acceptance,
           priority: draft.priority,
           severity: draft.severity,
+          start_at: draft.start_at,
+          end_at: draft.end_at,
           story_points: draft.story_points,
           estimated_hours: draft.estimated_hours,
           remaining_hours: draft.remaining_hours,
@@ -550,6 +576,8 @@ const WorkItemDetailPanel = defineComponent({
         acceptance: item.acceptance,
         priority: item.priority,
         severity: item.severity,
+        start_at: item.start_at,
+        end_at: item.end_at,
         story_points: item.story_points,
         estimated_hours: item.estimated_hours,
         remaining_hours: item.remaining_hours,
@@ -609,10 +637,38 @@ const WorkItemDetailPanel = defineComponent({
           () => [
             h(ETabPane, { label: 'Detail', name: 'detail' }, () =>
               h(EForm, { labelWidth: '96px' }, () => [
+                h('div', { class: 'detail-meta-grid' }, [
+                  h('span', `Created: ${item.created_at}`),
+                  h(
+                    'span',
+                    `Creator: ${item.created_by?.display_name ?? item.reporter.display_name}`,
+                  ),
+                  h('span', `Updated: ${item.updated_at}`),
+                  h('span', `Updater: ${item.updated_by?.display_name ?? '-'}`),
+                  h('span', `Completed: ${item.completed_at || '-'}`),
+                ]),
                 h(EFormItem, { label: 'Title' }, () =>
                   h(EInput, {
                     modelValue: draft.title,
                     'onUpdate:modelValue': (v: string) => (draft.title = v),
+                  }),
+                ),
+                h(EFormItem, { label: 'Start' }, () =>
+                  h(EDatePicker, {
+                    modelValue: draft.start_at,
+                    'onUpdate:modelValue': (v: string) => (draft.start_at = v),
+                    type: 'date',
+                    valueFormat: 'YYYY-MM-DD',
+                    placeholder: 'Select date',
+                  }),
+                ),
+                h(EFormItem, { label: 'End' }, () =>
+                  h(EDatePicker, {
+                    modelValue: draft.end_at,
+                    'onUpdate:modelValue': (v: string) => (draft.end_at = v),
+                    type: 'date',
+                    valueFormat: 'YYYY-MM-DD',
+                    placeholder: 'Select date',
                   }),
                 ),
                 h(EFormItem, { label: 'Description' }, () =>

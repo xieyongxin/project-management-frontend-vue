@@ -21,12 +21,18 @@ export interface WorkItemSummaryDto {
   severity: string
   assignee?: UserLiteDto | null
   reporter: UserLiteDto
+  created_by?: UserLiteDto | null
+  updated_by?: UserLiteDto | null
   sprint_id?: string | null
   phase_id?: string | null
   version_id?: string | null
+  start_at: string
+  end_at: string
+  completed_at: string
   story_points: number
   estimated_hours: number
   remaining_hours: number
+  is_archived: boolean
   row_version: number
   created_at: string
   updated_at: string

@@ -7,6 +7,7 @@
       :active-project-type="activeProjectType"
       :loading="projectTypesQuery.isLoading.value"
       :saving="saveProjectTypeMutation.isPending.value"
+      :can-write="canWriteConfiguration"
       @open="openProjectType"
       @back="goProjectTypeList"
       @reorder-tabs="reorderProjectTypeTabs"
@@ -19,6 +20,7 @@
       :active-workflow="activeWorkflow"
       :roles="roles"
       :saving="saveWorkflowMutation.isPending.value"
+      :can-write="canWriteConfiguration"
       @set-initial="setInitialState"
       @add-state="addWorkflowState"
       @delete-state="deleteWorkflowState"
@@ -32,6 +34,7 @@
       v-else
       :roles="roles"
       :loading="rolesQuery.isLoading.value"
+      :can-write="canWriteConfiguration"
       @save-role="saveRole"
     />
   </main>
@@ -45,6 +48,7 @@ import ProjectTypeConfiguration from '../components/ProjectTypeConfiguration.vue
 import RoleConfiguration from '../components/RoleConfiguration.vue'
 import WorkflowConfiguration from '../components/WorkflowConfiguration.vue'
 import {
+  useConfigurationCurrentUser,
   useProjectTypeConfigs,
   useRestoreWorkflowDefinition,
   useRoleDefinitions,
@@ -65,6 +69,7 @@ import type {
 
 const route = useRoute()
 const router = useRouter()
+const currentUserQuery = useConfigurationCurrentUser()
 const projectTypesQuery = useProjectTypeConfigs()
 const workflowsQuery = useWorkflowDefinitions()
 const rolesQuery = useRoleDefinitions()
@@ -90,6 +95,11 @@ const activeProjectType = computed(() =>
 )
 const activeWorkflow = computed(() =>
   workflows.value.find((item) => item.workflow_key === activeWorkflowKey.value),
+)
+const canWriteConfiguration = computed(
+  () =>
+    currentUserQuery.data.value?.permissions.includes('configuration:write') ??
+    false,
 )
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
@@ -130,6 +140,10 @@ const goProjectTypeList = () => {
 }
 
 const reorderProjectTypeTabs = (oldIndex: number, newIndex: number) => {
+  if (!canWriteConfiguration.value) {
+    return
+  }
+
   if (!activeProjectType.value) {
     return
   }
@@ -159,6 +173,11 @@ const confirmSave = async () => {
 }
 
 const saveProjectType = async () => {
+  if (!canWriteConfiguration.value) {
+    ElMessage.error('当前账号没有配置写入权限。')
+    return
+  }
+
   if (!activeProjectType.value) {
     return
   }
@@ -174,6 +193,10 @@ const saveProjectType = async () => {
 }
 
 const setInitialState = (stateKey: string) => {
+  if (!canWriteConfiguration.value) {
+    return
+  }
+
   activeWorkflow.value?.states.forEach((state) => {
     state.initial = state.state_key === stateKey
   })
@@ -199,6 +222,10 @@ const uniqueKey = (prefix: string, existingKeys: string[]) => {
 }
 
 const addWorkflowState = () => {
+  if (!canWriteConfiguration.value) {
+    return
+  }
+
   if (!activeWorkflow.value) {
     return
   }
@@ -218,6 +245,10 @@ const addWorkflowState = () => {
 }
 
 const deleteWorkflowState = (stateKey: string) => {
+  if (!canWriteConfiguration.value) {
+    return
+  }
+
   if (!activeWorkflow.value) {
     return
   }
@@ -259,6 +290,10 @@ const deleteWorkflowState = (stateKey: string) => {
 }
 
 const addWorkflowTransition = () => {
+  if (!canWriteConfiguration.value) {
+    return
+  }
+
   if (!activeWorkflow.value || activeWorkflow.value.states.length < 2) {
     ElMessage.error('至少需要两个状态才能新增流转。')
     return
@@ -296,6 +331,10 @@ const addWorkflowTransition = () => {
 }
 
 const deleteWorkflowTransition = (index: number) => {
+  if (!canWriteConfiguration.value) {
+    return
+  }
+
   activeWorkflow.value?.transitions.splice(index, 1)
   activeWorkflow.value?.transitions.forEach((transition, nextIndex) => {
     transition.sort_order = nextIndex + 1
@@ -358,6 +397,11 @@ const validateWorkflow = (workflow: WorkflowConfig) => {
 }
 
 const saveWorkflow = async () => {
+  if (!canWriteConfiguration.value) {
+    ElMessage.error('当前账号没有配置写入权限。')
+    return
+  }
+
   if (!activeWorkflow.value) {
     return
   }
@@ -375,6 +419,11 @@ const saveWorkflow = async () => {
 }
 
 const restoreWorkflow = async () => {
+  if (!canWriteConfiguration.value) {
+    ElMessage.error('当前账号没有配置写入权限。')
+    return
+  }
+
   if (!activeWorkflow.value) {
     return
   }
@@ -401,6 +450,11 @@ const restoreWorkflow = async () => {
 }
 
 const saveRole = (role: RoleConfig) => {
+  if (!canWriteConfiguration.value) {
+    ElMessage.error('当前账号没有配置写入权限。')
+    return
+  }
+
   saveRoleMutation.mutate(role, {
     onSuccess: () => ElMessage.success('角色配置已保存。'),
   })

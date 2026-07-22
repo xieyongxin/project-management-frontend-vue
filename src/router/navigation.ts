@@ -20,21 +20,25 @@ export const appNavigation = [
     label: '配置中心',
     path: '/configuration/project-types',
     icon: Operation,
+    requiredPermissions: ['configuration:read'],
     children: [
       {
         key: 'configuration-project-types',
         label: '项目类型配置',
         path: '/configuration/project-types',
+        requiredPermissions: ['configuration:read'],
       },
       {
         key: 'configuration-workflows',
         label: '工作流配置',
         path: '/configuration/workflows',
+        requiredPermissions: ['configuration:read'],
       },
       {
         key: 'configuration-roles',
         label: '角色配置',
         path: '/configuration/roles',
+        requiredPermissions: ['configuration:read'],
       },
     ],
   },

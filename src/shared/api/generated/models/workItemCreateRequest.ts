@@ -18,6 +18,8 @@ export interface WorkItemCreateRequest {
   sprint_id?: string | null
   phase_id?: string | null
   version_id?: string | null
+  start_at?: string
+  end_at?: string
   story_points?: number
   estimated_hours?: number
   remaining_hours?: number

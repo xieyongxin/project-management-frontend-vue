@@ -5,12 +5,15 @@
       description="配置需求、任务和缺陷默认工作流；保存后只影响后续新建项目。"
     >
       <template #actions>
-        <AppButton :disabled="!activeWorkflow" @click="emit('restore')">
+        <AppButton
+          :disabled="!activeWorkflow || !canWrite"
+          @click="emit('restore')"
+        >
           恢复默认工作流
         </AppButton>
         <AppButton
           type="primary"
-          :disabled="!activeWorkflow"
+          :disabled="!activeWorkflow || !canWrite"
           :loading="saving"
           @click="emit('save')"
         >
@@ -32,21 +35,23 @@
       <section class="configuration-panel workflow-editor">
         <div class="panel-title-row">
           <h2>状态列表</h2>
-          <AppButton plain @click="emit('addState')">新增状态</AppButton>
+          <AppButton plain :disabled="!canWrite" @click="emit('addState')">
+            新增状态
+          </AppButton>
         </div>
         <ElTable :data="activeWorkflow.states">
           <ElTableColumn prop="name" label="状态名称" min-width="150">
             <template
               #default="{ row }: { row: WorkflowConfig['states'][number] }"
             >
-              <AppInput v-model="row.name" />
+              <AppInput v-model="row.name" :disabled="!canWrite" />
             </template>
           </ElTableColumn>
           <ElTableColumn label="颜色" width="96">
             <template
               #default="{ row }: { row: WorkflowConfig['states'][number] }"
             >
-              <ElColorPicker v-model="row.color" />
+              <ElColorPicker v-model="row.color" :disabled="!canWrite" />
             </template>
           </ElTableColumn>
           <ElTableColumn label="起始" width="88">
@@ -56,6 +61,7 @@
               <ElRadio
                 :model-value="row.initial"
                 :value="true"
+                :disabled="!canWrite"
                 @change="emit('setInitial', row.state_key)"
               />
             </template>
@@ -64,7 +70,7 @@
             <template
               #default="{ row }: { row: WorkflowConfig['states'][number] }"
             >
-              <ElSwitch v-model="row.terminal" />
+              <ElSwitch v-model="row.terminal" :disabled="!canWrite" />
             </template>
           </ElTableColumn>
           <ElTableColumn label="操作" width="88">
@@ -74,6 +80,7 @@
               <AppButton
                 link
                 type="danger"
+                :disabled="!canWrite"
                 @click="confirmDeleteState(row.state_key)"
               >
                 删除
@@ -84,28 +91,38 @@
 
         <div class="panel-title-row mt-[var(--space-3)]">
           <h2>流转列表</h2>
-          <AppButton plain @click="emit('addTransition')">新增流转</AppButton>
+          <AppButton plain :disabled="!canWrite" @click="emit('addTransition')">
+            新增流转
+          </AppButton>
         </div>
         <ElTable :data="activeWorkflow.transitions">
           <ElTableColumn label="名称" min-width="150">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
-              <AppInput v-model="row.name" />
+              <AppInput v-model="row.name" :disabled="!canWrite" />
             </template>
           </ElTableColumn>
           <ElTableColumn label="源状态" min-width="150">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
-              <AppSelect v-model="row.from_state_key" :options="stateOptions" />
+              <AppSelect
+                v-model="row.from_state_key"
+                :disabled="!canWrite"
+                :options="stateOptions"
+              />
             </template>
           </ElTableColumn>
           <ElTableColumn label="目标状态" min-width="150">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
-              <AppSelect v-model="row.to_state_key" :options="stateOptions" />
+              <AppSelect
+                v-model="row.to_state_key"
+                :disabled="!canWrite"
+                :options="stateOptions"
+              />
             </template>
           </ElTableColumn>
           <ElTableColumn label="允许角色" min-width="180">
@@ -116,6 +133,7 @@
                 v-model="row.allowed_role_keys"
                 multiple
                 collapse-tags
+                :disabled="!canWrite"
                 :options="roleOptions"
               />
             </template>
@@ -124,14 +142,18 @@
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
-              <ElSwitch v-model="row.require_comment" />
+              <ElSwitch v-model="row.require_comment" :disabled="!canWrite" />
             </template>
           </ElTableColumn>
           <ElTableColumn label="通知" width="92">
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
-              <AppButton link @click="openNotifyDialog(row)">
+              <AppButton
+                link
+                :disabled="!canWrite"
+                @click="openNotifyDialog(row)"
+              >
                 {{ row.notify_enabled ? '已启用' : '配置' }}
               </AppButton>
             </template>
@@ -140,7 +162,11 @@
             <template
               #default="{ row }: { row: WorkflowConfig['transitions'][number] }"
             >
-              <AppButton link @click="openWebhookDialog(row)">
+              <AppButton
+                link
+                :disabled="!canWrite"
+                @click="openWebhookDialog(row)"
+              >
                 {{ row.webhook_enabled ? '已启用' : '配置' }}
               </AppButton>
             </template>
@@ -150,6 +176,7 @@
               <AppButton
                 link
                 type="danger"
+                :disabled="!canWrite"
                 @click="emit('deleteTransition', $index)"
               >
                 删除
@@ -182,16 +209,23 @@
         label-width="112px"
       >
         <ElFormItem label="启用通知">
-          <ElSwitch v-model="editingTransition.notify_enabled" />
+          <ElSwitch
+            v-model="editingTransition.notify_enabled"
+            :disabled="!canWrite"
+          />
         </ElFormItem>
         <ElFormItem label="接收规则">
-          <AppInput v-model="editingTransition.notify_rule" />
+          <AppInput
+            v-model="editingTransition.notify_rule"
+            :disabled="!canWrite"
+          />
         </ElFormItem>
         <ElFormItem label="文案模板">
           <AppInput
             v-model="editingTransition.notify_template"
             type="textarea"
             :rows="4"
+            :disabled="!canWrite"
           />
         </ElFormItem>
       </ElForm>
@@ -209,16 +243,23 @@
         label-width="112px"
       >
         <ElFormItem label="启用 Webhook">
-          <ElSwitch v-model="editingTransition.webhook_enabled" />
+          <ElSwitch
+            v-model="editingTransition.webhook_enabled"
+            :disabled="!canWrite"
+          />
         </ElFormItem>
         <ElFormItem label="Webhook URL">
-          <AppInput v-model="editingTransition.webhook_url" />
+          <AppInput
+            v-model="editingTransition.webhook_url"
+            :disabled="!canWrite"
+          />
         </ElFormItem>
         <ElFormItem label="Secret 状态">
           <ElSwitch
             v-model="editingTransition.webhook_secret_set"
             active-text="已配置"
             inactive-text="未配置"
+            :disabled="!canWrite"
           />
         </ElFormItem>
       </ElForm>
@@ -245,6 +286,7 @@ const props = defineProps<{
   activeWorkflow: WorkflowConfig | undefined
   roles: RoleConfig[]
   saving: boolean
+  canWrite: boolean
 }>()
 
 const emit = defineEmits<{
@@ -310,7 +352,7 @@ const flowEdges = computed<Edge[]>(() =>
 )
 
 const confirmDeleteState = async (stateKey: string) => {
-  if (!props.activeWorkflow) {
+  if (!props.activeWorkflow || !props.canWrite) {
     return
   }
 
@@ -336,11 +378,17 @@ const confirmDeleteState = async (stateKey: string) => {
 }
 
 const openNotifyDialog = (transition: WorkflowTransition) => {
+  if (!props.canWrite) {
+    return
+  }
   editingTransition.value = transition
   notifyDialogVisible.value = true
 }
 
 const openWebhookDialog = (transition: WorkflowTransition) => {
+  if (!props.canWrite) {
+    return
+  }
   editingTransition.value = transition
   webhookDialogVisible.value = true
 }

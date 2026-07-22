@@ -46,7 +46,12 @@
           <h2>{{ activeProjectType.name }}配置</h2>
           <p>启用的前 6 个 Tab 展示在顶部，超过 6 个自动进入“更多”菜单。</p>
         </div>
-        <AppButton type="primary" :loading="saving" @click="emit('save')">
+        <AppButton
+          type="primary"
+          :disabled="!canWrite"
+          :loading="saving"
+          @click="emit('save')"
+        >
           保存
         </AppButton>
       </div>
@@ -71,12 +76,14 @@
             class="tab-sort-row"
             :data-tab-key="tab.tab_key"
           >
-            <span class="drag-handle">⋮⋮</span>
+            <span class="drag-handle" :class="{ 'is-disabled': !canWrite }">
+              ⋮⋮
+            </span>
             <strong>{{ tab.name }}</strong>
             <span class="tab-sort-row__position">
               {{ resolveTabPosition(index, tab.enabled) }}
             </span>
-            <ElSwitch v-model="tab.enabled" />
+            <ElSwitch v-model="tab.enabled" :disabled="!canWrite" />
           </div>
         </div>
       </div>
@@ -96,6 +103,7 @@ const props = defineProps<{
   activeProjectType: ProjectTypeConfig | undefined
   loading: boolean
   saving: boolean
+  canWrite: boolean
 }>()
 
 const emit = defineEmits<{
@@ -113,7 +121,7 @@ const setupSortable = async () => {
   sortable.value?.destroy()
   sortable.value = undefined
 
-  if (!tabListRef.value || !props.activeProjectType) {
+  if (!tabListRef.value || !props.activeProjectType || !props.canWrite) {
     return
   }
 
@@ -149,7 +157,9 @@ const resolveTabPosition = (index: number, enabled: boolean) => {
   return enabledIndex >= 6 ? '更多菜单' : '顶部 Tab'
 }
 
-watch(() => props.activeTypeKey, setupSortable, { immediate: true })
+watch(() => [props.activeTypeKey, props.canWrite], setupSortable, {
+  immediate: true,
+})
 
 onBeforeUnmount(() => {
   sortable.value?.destroy()
@@ -191,6 +201,11 @@ onBeforeUnmount(() => {
 .drag-handle {
   color: var(--color-text-muted);
   cursor: grab;
+}
+
+.drag-handle.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .tab-sort-table {
