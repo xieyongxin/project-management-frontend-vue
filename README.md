@@ -6,7 +6,7 @@ Vue 3 frontend for the project management tool. The app talks to the Go backend 
 
 Implemented pages:
 
-- Login: WeCom scan-shaped login and emergency admin login.
+- Login: WeCom scan-shaped login with email-based mock scan in local/dev environments.
 - Workspace dashboard.
 - Project management list and project creation.
 - Project detail tabs: overview, requirements, tasks, defects, sprints/phases, versions, tests, members, activity, configuration snapshot.

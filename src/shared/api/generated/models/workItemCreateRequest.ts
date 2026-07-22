@@ -23,4 +23,9 @@ export interface WorkItemCreateRequest {
   story_points?: number
   estimated_hours?: number
   remaining_hours?: number
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  progress_percent?: number
 }

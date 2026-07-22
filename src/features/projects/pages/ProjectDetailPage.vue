@@ -26,9 +26,26 @@
           </div>
         </div>
         <div class="project-detail-header__actions">
-          <EButton @click="openCreateWorkItem('story')">新建需求</EButton>
-          <EButton @click="openCreateWorkItem('task')">新建任务</EButton>
-          <EButton type="primary" @click="openCreateWorkItem('bug')">
+          <EButton v-if="canManageProject" @click="openProjectEdit">
+            编辑项目
+          </EButton>
+          <EButton
+            :disabled="isProjectArchived"
+            @click="openCreateWorkItem('story')"
+          >
+            新建需求
+          </EButton>
+          <EButton
+            :disabled="isProjectArchived"
+            @click="openCreateWorkItem('task')"
+          >
+            新建任务
+          </EButton>
+          <EButton
+            type="primary"
+            :disabled="isProjectArchived"
+            @click="openCreateWorkItem('bug')"
+          >
             新建缺陷
           </EButton>
         </div>
@@ -195,6 +212,75 @@
           </EButton>
         </template>
       </EDialog>
+
+      <EDialog v-model="projectEditVisible" title="编辑项目资料" width="720px">
+        <EForm label-width="104px">
+          <EFormItem label="项目名称">
+            <EInput v-model="projectEditForm.name" />
+          </EFormItem>
+          <EFormItem label="项目负责人">
+            <ESelect v-model="projectEditForm.owner_id">
+              <EOption
+                v-for="user in projectOwnerOptions"
+                :key="user.id"
+                :label="user.display_name"
+                :value="user.id"
+              />
+            </ESelect>
+          </EFormItem>
+          <EFormItem label="默认处理人">
+            <ESelect v-model="projectEditForm.default_assignee_id" clearable>
+              <EOption
+                v-for="user in projectOwnerOptions"
+                :key="user.id"
+                :label="user.display_name"
+                :value="user.id"
+              />
+            </ESelect>
+          </EFormItem>
+          <EFormItem label="可见性">
+            <ESelect v-model="projectEditForm.visibility">
+              <EOption label="私有" value="private" />
+              <EOption label="公开" value="public" />
+            </ESelect>
+          </EFormItem>
+          <EFormItem label="项目周期">
+            <div class="project-edit-date-row">
+              <EDatePicker
+                v-model="projectEditForm.start_at"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始日期"
+              />
+              <EDatePicker
+                v-model="projectEditForm.end_at"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束日期"
+              />
+            </div>
+          </EFormItem>
+          <EFormItem label="项目描述">
+            <EInput
+              v-model="projectEditForm.description"
+              type="textarea"
+              :rows="4"
+              maxlength="500"
+              show-word-limit
+            />
+          </EFormItem>
+        </EForm>
+        <template #footer>
+          <EButton @click="projectEditVisible = false">取消</EButton>
+          <EButton
+            type="primary"
+            :loading="updateProjectMutation.isPending.value"
+            @click="submitProjectEdit"
+          >
+            保存
+          </EButton>
+        </template>
+      </EDialog>
     </template>
   </section>
 </template>
@@ -255,8 +341,12 @@ import type {
 import RichTextEditor from '../components/RichTextEditor.vue'
 import { projectDetailApi } from '../api/project-detail.api'
 import {
+  useProject,
+  useProjectCreateTemplate,
+  useProjectCurrentUser,
   useProjectNavigation,
   useProjectOverview,
+  useUpdateProject,
 } from '../api/project.queries'
 import { healthLabel, healthTone, methodLabel } from '../model/project-labels'
 
@@ -290,8 +380,36 @@ const workItemId = computed(() => String(route.params.workItemId ?? ''))
 
 const navigationQuery = useProjectNavigation(projectId)
 const overviewQuery = useProjectOverview(projectId)
+const projectQuery = useProject(projectId)
+const projectCreateTemplateQuery = useProjectCreateTemplate()
+const currentUserQuery = useProjectCurrentUser()
+const updateProjectMutation = useUpdateProject()
 const navigation = computed(() => navigationQuery.data.value)
 const overview = computed(() => overviewQuery.data.value)
+const projectDetail = computed(() => projectQuery.data.value)
+const projectOwnerOptions = computed(
+  () => projectCreateTemplateQuery.data.value?.owners ?? [],
+)
+const currentUser = computed(() => currentUserQuery.data.value)
+const isProjectArchived = computed(
+  () => navigation.value?.project.status === 'archived',
+)
+const canManageProject = computed(() => {
+  const user = currentUser.value
+  const project = navigation.value?.project
+  if (!user || !project || project.status === 'archived') {
+    return false
+  }
+  if (user.roles.includes('system_admin') || project.owner.id === user.id) {
+    return true
+  }
+  return (membersQuery.data.value ?? []).some(
+    (member: any) =>
+      member.user.id === user.id &&
+      member.active &&
+      member.role_key === 'project_owner',
+  )
+})
 
 const activityQuery = useQuery({
   queryKey: computed(() => ['projects', projectId.value, 'activity']),
@@ -306,6 +424,7 @@ const membersQuery = useQuery({
 })
 
 const createDialogVisible = ref(false)
+const projectEditVisible = ref(false)
 type WorkItemForm = WorkItemCreatePayload & {
   title: string
   description: string
@@ -338,6 +457,81 @@ const createWorkItemMutation = useMutation({
     await router.push(`/projects/${projectId.value}/work-items/${item.id}`)
   },
 })
+
+const projectEditForm = reactive({
+  row_version: 0,
+  name: '',
+  owner_id: '',
+  default_assignee_id: '',
+  visibility: 'private',
+  start_at: '',
+  end_at: '',
+  description: '',
+})
+
+function openProjectEdit() {
+  const project = projectDetail.value
+  if (!project) {
+    ElMessage.warning('项目资料尚未加载完成')
+    return
+  }
+  Object.assign(projectEditForm, {
+    row_version: project.row_version,
+    name: project.name,
+    owner_id: project.owner.id,
+    default_assignee_id: project.default_assignee?.id ?? '',
+    visibility: project.visibility,
+    start_at: project.start_at,
+    end_at: project.end_at,
+    description: project.description,
+  })
+  projectEditVisible.value = true
+}
+
+function submitProjectEdit() {
+  if (!projectEditForm.name.trim()) {
+    ElMessage.warning('请输入项目名称')
+    return
+  }
+  if (!projectEditForm.owner_id) {
+    ElMessage.warning('请选择项目负责人')
+    return
+  }
+  if (
+    projectEditForm.start_at &&
+    projectEditForm.end_at &&
+    projectEditForm.start_at > projectEditForm.end_at
+  ) {
+    ElMessage.warning('开始日期不能晚于结束日期')
+    return
+  }
+  updateProjectMutation.mutate(
+    {
+      projectId: projectId.value,
+      payload: {
+        row_version: projectEditForm.row_version,
+        name: projectEditForm.name.trim(),
+        owner_id: projectEditForm.owner_id,
+        default_assignee_id: projectEditForm.default_assignee_id || null,
+        visibility: projectEditForm.visibility as any,
+        start_at: projectEditForm.start_at,
+        end_at: projectEditForm.end_at,
+        description: projectEditForm.description.trim(),
+      },
+    },
+    {
+      onSuccess: () => {
+        projectEditVisible.value = false
+        ElMessage.success('项目资料已保存')
+        void Promise.all([
+          projectQuery.refetch(),
+          navigationQuery.refetch(),
+          overviewQuery.refetch(),
+        ])
+      },
+    },
+  )
+}
 
 function openCreateWorkItem(type: string) {
   Object.assign(workItemForm, {
@@ -1345,6 +1539,12 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: var(--space-1);
+}
+
+.project-edit-date-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-1);
 }
 

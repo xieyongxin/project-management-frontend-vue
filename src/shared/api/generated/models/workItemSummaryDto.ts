@@ -32,6 +32,11 @@ export interface WorkItemSummaryDto {
   story_points: number
   estimated_hours: number
   remaining_hours: number
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  progress_percent: number
   is_archived: boolean
   row_version: number
   created_at: string

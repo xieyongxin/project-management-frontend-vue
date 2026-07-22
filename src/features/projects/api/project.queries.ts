@@ -11,10 +11,12 @@ import {
   getProjectStats,
   getProjects,
   getCurrentUser,
+  updateProject,
 } from '@/shared/api/generated/auth-api'
 import type {
   ProjectArchiveRequest,
   ProjectCreateRequest,
+  ProjectUpdateRequest,
 } from '@/shared/api/generated/models'
 import { toProjectRequestParams } from '../model/project-list-query'
 import type { ProjectListQuery } from '../model/project-list-query'
@@ -89,6 +91,31 @@ export const useArchiveProject = () => {
         queryClient.invalidateQueries({ queryKey: projectKeys.all }),
         queryClient.invalidateQueries({
           queryKey: projectKeys.detail(variables.projectId),
+        }),
+      ])
+    },
+  })
+}
+
+export const useUpdateProject = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      payload,
+    }: {
+      projectId: string
+      payload: ProjectUpdateRequest
+    }) => updateProject(projectId, payload),
+    onSuccess: async (_project, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.detail(variables.projectId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.navigation(variables.projectId),
         }),
       ])
     },

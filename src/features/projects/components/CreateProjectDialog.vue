@@ -78,11 +78,35 @@
             :loading="templateLoading"
           />
         </ElFormItem>
+        <ElFormItem label="默认处理人">
+          <AppSelect
+            v-model="form.defaultAssigneeId"
+            clearable
+            :options="ownerOptions"
+            :loading="templateLoading"
+          />
+        </ElFormItem>
         <ElFormItem label="可见性" required>
           <ElRadioGroup v-model="form.visibility">
             <ElRadioButton value="private">私有</ElRadioButton>
             <ElRadioButton value="public">公开</ElRadioButton>
           </ElRadioGroup>
+        </ElFormItem>
+        <ElFormItem label="项目周期" :error="errors.dateRange">
+          <div class="date-range-row">
+            <ElDatePicker
+              v-model="form.startAt"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="开始日期"
+            />
+            <ElDatePicker
+              v-model="form.endAt"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="结束日期"
+            />
+          </div>
         </ElFormItem>
         <ElFormItem label="项目描述">
           <AppInput
@@ -125,6 +149,7 @@
 
 <script setup lang="ts">
 import { DataBoard } from '@element-plus/icons-vue'
+import { ElDatePicker } from 'element-plus'
 import { computed, reactive, ref, watch } from 'vue'
 import { AppButton, AppInput, AppSelect } from '@/shared/components'
 import type {
@@ -152,7 +177,10 @@ interface CreateProjectForm {
   name: string
   identifier: string
   ownerId: string
+  defaultAssigneeId: string
   visibility: ProjectCreatePayload['visibility']
+  startAt: string
+  endAt: string
   description: string
 }
 
@@ -161,13 +189,17 @@ const form = reactive<CreateProjectForm>({
   name: '',
   identifier: '',
   ownerId: '',
+  defaultAssigneeId: '',
   visibility: 'private',
+  startAt: '',
+  endAt: '',
   description: '',
 })
 const errors = reactive({
   name: '',
   identifier: '',
   ownerId: '',
+  dateRange: '',
 })
 
 const tips = [
@@ -225,6 +257,7 @@ watch(
     errors.name = ''
     errors.identifier = ''
     errors.ownerId = ''
+    errors.dateRange = ''
   },
 )
 
@@ -244,8 +277,14 @@ const validate = () => {
       ? ''
       : '项目标识长度需为 2-16 个字符。'
   errors.ownerId = form.ownerId ? '' : '请选择项目负责人。'
+  errors.dateRange =
+    form.startAt && form.endAt && form.startAt > form.endAt
+      ? '开始日期不能晚于结束日期。'
+      : ''
 
-  return !errors.name && !errors.identifier && !errors.ownerId
+  return (
+    !errors.name && !errors.identifier && !errors.ownerId && !errors.dateRange
+  )
 }
 
 const submit = () => {
@@ -258,7 +297,10 @@ const submit = () => {
     name: form.name.trim(),
     identifier: form.identifier.trim(),
     owner_id: form.ownerId,
+    default_assignee_id: form.defaultAssigneeId || null,
     visibility: form.visibility,
+    start_at: form.startAt,
+    end_at: form.endAt,
     description: form.description.trim(),
   })
 }
@@ -409,6 +451,12 @@ const submit = () => {
 .dialog-footer {
   display: flex;
   align-items: center;
+  gap: var(--space-1);
+}
+
+.date-range-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-1);
 }
 

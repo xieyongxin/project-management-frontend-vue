@@ -7,6 +7,8 @@
 
 export interface WorkItemRelationDto {
   id: string
+  source_type: string
+  source_id: string
   target_type: string
   target_id: string
   relation_type: string

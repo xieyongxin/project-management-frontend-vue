@@ -48,7 +48,7 @@ feature 之间禁止直接依赖。跨领域流程由 router/app 组合，真正
 
 首期对接 Go 后端真实接口，接口契约来自后端仓库 `openapi/openapi.yaml`，前端通过 Orval 生成客户端：
 
-- `POST /auth/emergency/login`
+- `POST /auth/wecom/mock-login`
 - `POST /auth/logout`
 - `GET /me`
 - `GET /auth/csrf`
