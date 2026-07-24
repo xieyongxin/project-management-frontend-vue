@@ -18,13 +18,14 @@
         <ol v-else class="flow-preview__nodes">
           <li v-for="(item, index) in activeFlow" :key="item.key">
             <span class="flow-preview__node" :style="flowNodeStyle(item)">
+              <span class="flow-preview__dot" :style="flowDotStyle(item)" />
               {{ item.name }}
             </span>
             <span
               v-if="index < activeFlow.length - 1"
               class="flow-preview__arrow"
             >
-              →
+              ↓
             </span>
           </li>
         </ol>
@@ -87,9 +88,19 @@
           />
         </ElFormItem>
         <ElFormItem label="可见性" required>
-          <ElRadioGroup v-model="form.visibility">
-            <ElRadioButton value="private">私有</ElRadioButton>
-            <ElRadioButton value="public">公开</ElRadioButton>
+          <ElRadioGroup v-model="form.visibility" class="visibility-choice">
+            <ElRadio value="private" class="visibility-choice__card">
+              <strong>私有</strong>
+              <span
+                >仅项目成员、项目负责人和管理员可访问，适合未公开立项或敏感项目。</span
+              >
+            </ElRadio>
+            <ElRadio value="public" class="visibility-choice__card">
+              <strong>公开</strong>
+              <span
+                >公司内登录用户均可查看项目基础信息，适合跨团队协作和透明进展。</span
+              >
+            </ElRadio>
           </ElRadioGroup>
         </ElFormItem>
         <ElFormItem label="项目周期" :error="errors.dateRange">
@@ -119,16 +130,6 @@
           />
         </ElFormItem>
       </ElForm>
-
-      <aside class="create-project-tips">
-        <div v-for="tip in tips" :key="tip">{{ tip }}</div>
-        <ElAlert
-          type="info"
-          :closable="false"
-          show-icon
-          title="创建完成后，项目将按所选模板启用对应流程和 Tab。"
-        />
-      </aside>
     </section>
 
     <template #footer>
@@ -202,12 +203,6 @@ const errors = reactive({
   dateRange: '',
 })
 
-const tips = [
-  '项目标识创建后通常不可修改',
-  '负责人必须为有效用户',
-  '可见性会影响公司内访问范围',
-]
-
 const projectTypeOptions = computed(() => props.template.project_types)
 const ownerOptions = computed(() =>
   props.template.owners.map((owner) => ({
@@ -269,6 +264,10 @@ const flowNodeStyle = (node: ProjectFlowNode) => ({
   color: node.color,
 })
 
+const flowDotStyle = (node: ProjectFlowNode) => ({
+  backgroundColor: node.color,
+})
+
 const validate = () => {
   errors.name = form.name.trim() ? '' : '项目名称不能为空。'
   const identifier = form.identifier.trim()
@@ -319,11 +318,10 @@ const submit = () => {
 }
 
 .create-project-form {
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.flow-preview,
-.create-project-tips {
+.flow-preview {
   padding: var(--space-3);
   background: var(--color-bg-subtle);
   border: var(--border-width) solid var(--color-border);
@@ -338,7 +336,7 @@ const submit = () => {
 
 .flow-preview__nodes {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
@@ -346,30 +344,41 @@ const submit = () => {
 
 .flow-preview__nodes li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 24px;
+  justify-items: center;
   align-items: center;
-  gap: 6px;
-}
-
-.flow-preview__nodes li:last-child {
-  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
 }
 
 .flow-preview__node {
+  display: inline-flex;
+  width: 100%;
   min-width: 0;
-  padding: 8px 10px;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
   overflow: hidden;
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 2px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-md);
+}
+
+.flow-preview__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
 .flow-preview__arrow {
   color: var(--color-text-muted);
-  font-size: 18px;
+  font-size: 14px;
+  line-height: 1;
   text-align: center;
 }
 
@@ -435,19 +444,6 @@ const submit = () => {
   border-radius: var(--radius-md);
 }
 
-.create-project-tips {
-  display: grid;
-  align-content: start;
-  gap: var(--space-2);
-}
-
-.create-project-tips div {
-  padding: var(--space-2);
-  color: var(--color-text-secondary);
-  background: var(--color-bg-surface);
-  border-radius: var(--radius-md);
-}
-
 .dialog-footer {
   display: flex;
   align-items: center;
@@ -460,9 +456,52 @@ const submit = () => {
   gap: var(--space-1);
 }
 
+.visibility-choice {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.visibility-choice :deep(.el-radio) {
+  height: auto;
+  margin-right: 0;
+  padding: var(--space-2);
+  align-items: flex-start;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+.visibility-choice :deep(.el-radio.is-checked) {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+.visibility-choice :deep(.el-radio__label) {
+  display: grid;
+  gap: 6px;
+  line-height: var(--line-height-normal);
+  white-space: normal;
+}
+
+.visibility-choice__card strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+}
+
+.visibility-choice__card span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body-sm);
+}
+
 @media (max-width: 900px) {
   .create-project-step,
   .create-project-form {
+    grid-template-columns: 1fr;
+  }
+
+  .visibility-choice {
     grid-template-columns: 1fr;
   }
 }

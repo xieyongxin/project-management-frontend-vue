@@ -32,6 +32,21 @@ Default backend seed account:
 
 The default dev server runs on `http://localhost:5174` and proxies `/api` to `http://localhost:8080`.
 
+To debug the local frontend against a remote backend, keep `VITE_API_BASE_URL`
+as `/api/v1` and set the proxy target in `.env.local`:
+
+```bash
+VITE_DEV_API_PROXY_TARGET=http://43.138.196.113
+```
+
+The Vite dev proxy rewrites the proxied request `Origin` to the backend origin
+and rewrites cookie domains for local development, so browser requests still use
+the same local frontend origin:
+
+```text
+http://localhost:5174/api/v1/... -> Vite proxy -> remote backend
+```
+
 ## Common Commands
 
 ```bash

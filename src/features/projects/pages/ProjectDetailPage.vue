@@ -152,101 +152,16 @@
       <EDialog
         v-model="createDialogVisible"
         :title="createMode === 'task' ? '创建任务' : '创建需求'"
-        width="760px"
+        width="1040px"
       >
-        <EForm label-width="96px">
-          <EFormItem label="标题">
-            <EInput v-model="workItemForm.title" />
-          </EFormItem>
-          <EFormItem label="优先级">
-            <ESelect v-model="workItemForm.priority">
-              <EOption label="高" value="high" />
-              <EOption label="中" value="medium" />
-              <EOption label="低" value="low" />
-            </ESelect>
-          </EFormItem>
-          <EFormItem label="负责人">
-            <ESelect v-model="workItemForm.assignee_id" clearable>
-              <EOption
-                v-for="member in membersQuery.data.value ?? []"
-                :key="member.user.id"
-                :label="member.user.display_name"
-                :value="member.user.id"
-              />
-            </ESelect>
-          </EFormItem>
-          <EFormItem label="计划开始">
-            <EDatePicker
-              v-model="workItemForm.start_at"
-              type="date"
-              value-format="YYYY-MM-DD"
-              placeholder="选择日期"
-            />
-          </EFormItem>
-          <EFormItem label="计划结束">
-            <EDatePicker
-              v-model="workItemForm.end_at"
-              type="date"
-              value-format="YYYY-MM-DD"
-              placeholder="选择日期"
-            />
-          </EFormItem>
-          <EFormItem v-if="createMode === 'requirement'" label="需求来源">
-            <EInput v-model="workItemForm.requirement_detail.source" />
-          </EFormItem>
-          <EFormItem v-if="createMode === 'requirement'" label="业务价值">
-            <EInput
-              v-model="workItemForm.requirement_detail.business_value"
-              type="textarea"
-              :rows="3"
-            />
-          </EFormItem>
-          <EFormItem v-if="createMode === 'task'" label="分类">
-            <ESelect v-model="workItemForm.task_detail.category">
-              <EOption
-                v-for="option in taskCategoryOptions"
-                :key="option.value"
-                :label="option.label"
-                :value="option.value"
-              />
-            </ESelect>
-          </EFormItem>
-          <EFormItem v-if="createMode === 'task'" label="父需求">
-            <ESelect v-model="workItemForm.parent_id" clearable>
-              <EOption
-                v-for="item in requirementOptionsQuery.data.value?.data ?? []"
-                :key="item.id"
-                :label="`${item.number} ${item.title}`"
-                :value="item.id"
-              />
-            </ESelect>
-          </EFormItem>
-          <EFormItem v-if="createMode === 'task'" label="预估工时">
-            <EInput v-model.number="workItemForm.estimated_hours" />
-          </EFormItem>
-          <EFormItem v-if="createMode === 'task'" label="剩余工时">
-            <EInput v-model.number="workItemForm.remaining_hours" />
-          </EFormItem>
-          <EFormItem v-if="createMode === 'task'" label="代码评审">
-            <ESelect v-model="workItemForm.task_detail.review_required">
-              <EOption label="需要" :value="true" />
-              <EOption label="不需要" :value="false" />
-            </ESelect>
-          </EFormItem>
-          <EFormItem v-if="createMode === 'task'" label="技术说明">
-            <EInput
-              v-model="workItemForm.task_detail.technical_notes"
-              type="textarea"
-              :rows="3"
-            />
-          </EFormItem>
-          <EFormItem label="描述">
-            <RichTextEditor v-model="workItemForm.description" />
-          </EFormItem>
-          <EFormItem v-if="createMode === 'requirement'" label="验收标准">
-            <RichTextEditor v-model="workItemForm.acceptance" />
-          </EFormItem>
-        </EForm>
+        <WorkItemEditor
+          mode="create"
+          :kind="createMode"
+          :form="workItemForm"
+          :members="membersQuery.data.value ?? []"
+          :requirements="requirementOptionsQuery.data.value?.data ?? []"
+          @update-field="updateWorkItemFormField"
+        />
         <template #footer>
           <EButton @click="createDialogVisible = false">取消</EButton>
           <EButton
@@ -386,6 +301,11 @@ import type {
   WorkItemSummary,
 } from '../model/project-detail.types'
 import RichTextEditor from '../components/RichTextEditor.vue'
+import WorkItemEditor from '../components/WorkItemEditor.vue'
+import type {
+  WorkItemEditorField,
+  WorkItemEditorForm,
+} from '../components/WorkItemEditor.vue'
 import { projectDetailApi } from '../api/project-detail.api'
 import {
   useProject,
@@ -443,18 +363,6 @@ const acceptanceStatusLabel: Record<string, string> = {
   accepted: '已通过',
   rejected: '已拒绝',
 }
-const taskCategoryLabel: Record<string, string> = {
-  development: '开发',
-  design: '设计',
-  research: '调研',
-  refactor: '重构',
-  integration: '联调',
-  documentation: '文档',
-  other: '其他',
-}
-const taskCategoryOptions = Object.entries(taskCategoryLabel).map(
-  ([value, label]) => ({ value, label }),
-)
 const isProjectArchived = computed(
   () => navigation.value?.project.status === 'archived',
 )
@@ -509,6 +417,8 @@ type WorkItemForm = WorkItemCreatePayload & {
   title: string
   description: string
   acceptance: string
+  assignee_id?: string
+  parent_id?: string
   start_at: string
   end_at: string
   requirement_detail: {
@@ -649,6 +559,7 @@ function openCreateRequirement() {
     estimated_hours: 0,
     remaining_hours: 0,
     assignee_id: undefined,
+    parent_id: undefined,
     requirement_detail: {
       source: '',
       business_value: '',
@@ -702,6 +613,90 @@ function isRichTextBlank(value: string) {
     normalized === '<p><br></p>' ||
     normalized === '<p>&nbsp;</p>'
   )
+}
+
+function stringFieldValue(value: unknown) {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return value.toString()
+  }
+  return ''
+}
+
+function numberFieldValue(value: unknown) {
+  return typeof value === 'number'
+    ? value
+    : Number(stringFieldValue(value)) || 0
+}
+
+function updateFormField(
+  form: WorkItemEditorForm,
+  field: WorkItemEditorField,
+  value: unknown,
+) {
+  switch (field) {
+    case 'title':
+      form.title = stringFieldValue(value)
+      break
+    case 'description':
+      form.description = stringFieldValue(value)
+      break
+    case 'acceptance':
+      form.acceptance = stringFieldValue(value)
+      break
+    case 'priority':
+      form.priority = stringFieldValue(value)
+      break
+    case 'assignee_id':
+      if (value) {
+        form.assignee_id = stringFieldValue(value)
+      } else {
+        delete form.assignee_id
+      }
+      break
+    case 'parent_id':
+      if (value) {
+        form.parent_id = stringFieldValue(value)
+      } else {
+        delete form.parent_id
+      }
+      break
+    case 'start_at':
+      form.start_at = stringFieldValue(value)
+      break
+    case 'end_at':
+      form.end_at = stringFieldValue(value)
+      break
+    case 'estimated_hours':
+      form.estimated_hours = numberFieldValue(value)
+      break
+    case 'remaining_hours':
+      form.remaining_hours = numberFieldValue(value)
+      break
+    case 'requirement_detail.source':
+      form.requirement_detail.source = stringFieldValue(value)
+      break
+    case 'requirement_detail.business_value':
+      form.requirement_detail.business_value = stringFieldValue(value)
+      break
+    case 'task_detail.category':
+      form.task_detail.category = stringFieldValue(value)
+      break
+    case 'task_detail.technical_notes':
+      form.task_detail.technical_notes = stringFieldValue(value)
+      break
+    case 'task_detail.review_required':
+      form.task_detail.review_required = value === true
+      break
+    case 'task_detail.code_review_url':
+      form.task_detail.code_review_url = stringFieldValue(value)
+  }
+}
+
+function updateWorkItemFormField(field: WorkItemEditorField, value: unknown) {
+  updateFormField(workItemForm, field, value)
 }
 
 function submitWorkItem() {
@@ -1110,418 +1105,257 @@ const WorkItemDetailPanel = defineComponent({
             () => 'Back',
           ),
         ]),
-        h('div', { class: 'detail-summary' }, [
-          h(
-            ETag,
-            { color: item.status_color, effect: 'dark' },
-            () => item.status_name,
-          ),
-          h('span', `Type: ${item.type}`),
-          h('span', `Priority: ${item.priority}`),
-          h(
-            'span',
-            `验收：${acceptanceStatusLabel[item.acceptance_status] ?? '-'}`,
-          ),
-        ]),
-        h('div', { class: 'transition-bar' }, [
-          h(EInput, {
-            modelValue: transitionComment.value,
-            'onUpdate:modelValue': (v: string) => (transitionComment.value = v),
-            placeholder: 'Transition comment',
-          }),
-          ...item.available_transitions.map((transition) =>
-            h(
-              EButton,
-              {
-                type: 'primary',
-                onClick: () =>
-                  transitionMutation.mutate({
-                    item,
-                    key: transition.transition_key,
-                  }),
-              },
-              () => transition.name,
-            ),
-          ),
-        ]),
         h(
-          ETabs,
+          WorkItemEditor,
           {
-            modelValue: activeTab.value,
-            'onUpdate:modelValue': (v: string) => (activeTab.value = v),
+            mode: 'detail',
+            kind: item.type === 'task' ? 'task' : 'requirement',
+            form: draft,
+            members: membersQuery.data.value ?? [],
+            requirements: requirementOptionsQuery.data.value?.data ?? [],
+            item,
+            onUpdateField: (field: WorkItemEditorField, value: unknown) =>
+              updateFormField(draft, field, value),
           },
-          () => [
-            h(ETabPane, { label: 'Detail', name: 'detail' }, () =>
-              h(EForm, { labelWidth: '96px' }, () => [
-                h('div', { class: 'detail-meta-grid' }, [
-                  h('span', `Created: ${item.created_at}`),
-                  h(
-                    'span',
-                    `Creator: ${item.created_by?.display_name ?? item.reporter.display_name}`,
-                  ),
-                  h('span', `Updated: ${item.updated_at}`),
-                  h('span', `Updater: ${item.updated_by?.display_name ?? '-'}`),
-                  h('span', `Completed: ${item.completed_at || '-'}`),
-                ]),
-                h(EFormItem, { label: 'Title' }, () =>
-                  h(EInput, {
-                    modelValue: draft.title,
-                    'onUpdate:modelValue': (v: string) => (draft.title = v),
-                  }),
-                ),
-                h(EFormItem, { label: 'Assignee' }, () =>
-                  h(
-                    ESelect,
-                    {
-                      modelValue: draft.assignee_id,
-                      'onUpdate:modelValue': (v: string) =>
-                        (draft.assignee_id = v),
-                      clearable: true,
-                    },
-                    () =>
-                      (membersQuery.data.value ?? []).map((member: any) =>
-                        h(EOption, {
-                          label: member.user.display_name,
-                          value: member.user.id,
-                        }),
-                      ),
-                  ),
-                ),
-                h(EFormItem, { label: 'Priority' }, () =>
-                  h(
-                    ESelect,
-                    {
-                      modelValue: draft.priority,
-                      'onUpdate:modelValue': (v: string) =>
-                        (draft.priority = v),
-                    },
-                    () => [
-                      h(EOption, { label: 'High', value: 'high' }),
-                      h(EOption, { label: 'Medium', value: 'medium' }),
-                      h(EOption, { label: 'Low', value: 'low' }),
-                    ],
-                  ),
-                ),
-                item.type === 'task'
-                  ? h(EFormItem, { label: 'Parent' }, () =>
-                      h(
-                        ESelect,
-                        {
-                          modelValue: draft.parent_id,
-                          'onUpdate:modelValue': (v: string) =>
-                            (draft.parent_id = v),
-                          clearable: true,
-                        },
-                        () =>
-                          (requirementOptionsQuery.data.value?.data ?? []).map(
-                            (requirement) =>
-                              h(EOption, {
-                                label: `${requirement.number} ${requirement.title}`,
-                                value: requirement.id,
-                              }),
-                          ),
-                      ),
-                    )
-                  : null,
-                h(EFormItem, { label: 'Start' }, () =>
-                  h(EDatePicker, {
-                    modelValue: draft.start_at,
-                    'onUpdate:modelValue': (v: string) => (draft.start_at = v),
-                    type: 'date',
-                    valueFormat: 'YYYY-MM-DD',
-                    placeholder: 'Select date',
-                  }),
-                ),
-                h(EFormItem, { label: 'End' }, () =>
-                  h(EDatePicker, {
-                    modelValue: draft.end_at,
-                    'onUpdate:modelValue': (v: string) => (draft.end_at = v),
-                    type: 'date',
-                    valueFormat: 'YYYY-MM-DD',
-                    placeholder: 'Select date',
-                  }),
-                ),
-                h(EFormItem, { label: 'Source' }, () =>
-                  h(EInput, {
-                    modelValue: draft.requirement_detail.source,
-                    'onUpdate:modelValue': (v: string) =>
-                      (draft.requirement_detail.source = v),
-                  }),
-                ),
-                h(EFormItem, { label: 'Value' }, () =>
-                  h(EInput, {
-                    modelValue: draft.requirement_detail.business_value,
-                    'onUpdate:modelValue': (v: string) =>
-                      (draft.requirement_detail.business_value = v),
-                    type: 'textarea',
-                    rows: 3,
-                  }),
-                ),
-                item.type === 'task'
-                  ? h(EFormItem, { label: 'Category' }, () =>
-                      h(
-                        ESelect,
-                        {
-                          modelValue: draft.task_detail.category,
-                          'onUpdate:modelValue': (v: string) =>
-                            (draft.task_detail.category = v),
-                        },
-                        () =>
-                          taskCategoryOptions.map((option) =>
-                            h(EOption, {
-                              label: option.label,
-                              value: option.value,
-                            }),
-                          ),
-                      ),
-                    )
-                  : null,
-                item.type === 'task'
-                  ? h(EFormItem, { label: 'Remaining' }, () =>
-                      h(EInput, {
-                        modelValue: draft.remaining_hours,
-                        'onUpdate:modelValue': (v: number) =>
-                          (draft.remaining_hours = Number(v)),
-                      }),
-                    )
-                  : null,
-                item.type === 'task'
-                  ? h(EFormItem, { label: 'Review' }, () =>
-                      h(
-                        ESelect,
-                        {
-                          modelValue: draft.task_detail.review_required,
-                          'onUpdate:modelValue': (v: boolean) =>
-                            (draft.task_detail.review_required = v),
-                        },
-                        () => [
-                          h(EOption, { label: 'Required', value: true }),
-                          h(EOption, { label: 'Not Required', value: false }),
-                        ],
-                      ),
-                    )
-                  : null,
-                item.type === 'task'
-                  ? h(EFormItem, { label: 'Review URL' }, () =>
-                      h(EInput, {
-                        modelValue: draft.task_detail.code_review_url,
-                        'onUpdate:modelValue': (v: string) =>
-                          (draft.task_detail.code_review_url = v),
-                      }),
-                    )
-                  : null,
-                item.type === 'task'
-                  ? h(EFormItem, { label: 'Tech Notes' }, () =>
-                      h(EInput, {
-                        modelValue: draft.task_detail.technical_notes,
-                        'onUpdate:modelValue': (v: string) =>
-                          (draft.task_detail.technical_notes = v),
-                        type: 'textarea',
-                        rows: 3,
-                      }),
-                    )
-                  : null,
-                h(EFormItem, { label: 'Description' }, () =>
-                  h(RichTextEditor, {
-                    modelValue: draft.description,
-                    'onUpdate:modelValue': (v: string) =>
-                      (draft.description = v),
-                  }),
-                ),
-                h(EFormItem, { label: 'Acceptance' }, () =>
-                  item.type === 'story'
-                    ? h(RichTextEditor, {
-                        modelValue: draft.acceptance,
-                        'onUpdate:modelValue': (v: string) =>
-                          (draft.acceptance = v),
-                      })
-                    : h('span', '-'),
-                ),
-                h(EFormItem, () =>
-                  h(
-                    EButton,
-                    {
-                      type: 'primary',
-                      onClick: () => saveMutation.mutate(item),
-                    },
-                    () => 'Save',
-                  ),
-                ),
-              ]),
-            ),
-            h(ETabPane, { label: 'Comments', name: 'comments' }, () => [
-              h(
-                'div',
-                { class: 'comment-list' },
-                item.comments.map((entry) =>
-                  h('article', { class: 'comment-item' }, [
-                    h('strong', entry.author.display_name),
-                    h('span', entry.created_at),
-                    h('div', { innerHTML: entry.content }),
-                  ]),
-                ),
-              ),
-              h(RichTextEditor, {
-                modelValue: comment.value,
-                'onUpdate:modelValue': (v: string) => (comment.value = v),
-              }),
+          {
+            actions: () =>
               h(
                 EButton,
                 {
                   type: 'primary',
-                  onClick: () => commentMutation.mutate(item),
+                  loading: saveMutation.isPending.value,
+                  onClick: () => saveMutation.mutate(item),
                 },
-                () => 'Post Comment',
+                () => '保存',
               ),
-            ]),
-            item.type === 'story'
-              ? h(ETabPane, { label: 'Acceptance', name: 'acceptance' }, () => [
-                  h('div', { class: 'detail-summary' }, [
+            tabs: () => [
+              h('div', { class: 'transition-bar' }, [
+                h(EInput, {
+                  modelValue: transitionComment.value,
+                  'onUpdate:modelValue': (v: string) =>
+                    (transitionComment.value = v),
+                  placeholder: '填写流转备注',
+                }),
+                ...item.available_transitions.map((transition) =>
+                  h(
+                    EButton,
+                    {
+                      type: 'primary',
+                      onClick: () =>
+                        transitionMutation.mutate({
+                          item,
+                          key: transition.transition_key,
+                        }),
+                    },
+                    () => transition.name,
+                  ),
+                ),
+              ]),
+              h(
+                ETabs,
+                {
+                  modelValue: activeTab.value,
+                  'onUpdate:modelValue': (v: string) => (activeTab.value = v),
+                },
+                () => [
+                  h(ETabPane, { label: '评论', name: 'comments' }, () => [
                     h(
-                      'span',
-                      `当前状态：${acceptanceStatusLabel[item.requirement_detail?.acceptance_status ?? item.acceptance_status] ?? '-'}`,
+                      'div',
+                      { class: 'comment-list' },
+                      item.comments.map((entry) =>
+                        h('article', { class: 'comment-item' }, [
+                          h('strong', entry.author.display_name),
+                          h('span', entry.created_at),
+                          h('div', { innerHTML: entry.content }),
+                        ]),
+                      ),
                     ),
+                    h(RichTextEditor, {
+                      modelValue: comment.value,
+                      'onUpdate:modelValue': (v: string) => (comment.value = v),
+                    }),
                     h(
-                      'span',
-                      `验收人：${item.requirement_detail?.accepted_by?.display_name ?? '-'}`,
-                    ),
-                    h(
-                      'span',
-                      `验收时间：${item.requirement_detail?.accepted_at ?? '-'}`,
+                      EButton,
+                      {
+                        type: 'primary',
+                        onClick: () => commentMutation.mutate(item),
+                      },
+                      () => '发表评论',
                     ),
                   ]),
-                  item.requirement_detail?.rejected_reason
-                    ? h(
-                        'p',
-                        `拒绝原因：${item.requirement_detail.rejected_reason}`,
-                      )
-                    : null,
-                  h(EInput, {
-                    modelValue: acceptanceComment.value,
-                    'onUpdate:modelValue': (v: string) =>
-                      (acceptanceComment.value = v),
-                    type: 'textarea',
-                    rows: 3,
-                    placeholder: '填写验收意见；拒绝时必填',
-                  }),
-                  item.status === 'accepting'
-                    ? h('div', { class: 'inline-form' }, [
+                  item.type === 'story'
+                    ? h(ETabPane, { label: '验收', name: 'acceptance' }, () => [
+                        h('div', { class: 'detail-summary' }, [
+                          h(
+                            'span',
+                            `当前状态：${
+                              acceptanceStatusLabel[
+                                item.requirement_detail?.acceptance_status ??
+                                  item.acceptance_status
+                              ] ?? '-'
+                            }`,
+                          ),
+                          h(
+                            'span',
+                            `验收人：${
+                              item.requirement_detail?.accepted_by
+                                ?.display_name ?? '-'
+                            }`,
+                          ),
+                          h(
+                            'span',
+                            `验收时间：${
+                              item.requirement_detail?.accepted_at ?? '-'
+                            }`,
+                          ),
+                        ]),
+                        item.requirement_detail?.rejected_reason
+                          ? h(
+                              'p',
+                              `拒绝原因：${
+                                item.requirement_detail.rejected_reason
+                              }`,
+                            )
+                          : null,
+                        h(EInput, {
+                          modelValue: acceptanceComment.value,
+                          'onUpdate:modelValue': (v: string) =>
+                            (acceptanceComment.value = v),
+                          type: 'textarea',
+                          rows: 3,
+                          placeholder: '填写验收意见；拒绝时必填',
+                        }),
+                        item.status === 'accepting'
+                          ? h('div', { class: 'inline-form' }, [
+                              h(
+                                EButton,
+                                {
+                                  type: 'primary',
+                                  loading: acceptanceMutation.isPending.value,
+                                  onClick: () =>
+                                    submitAcceptance(item, 'accepted'),
+                                },
+                                () => '验收通过',
+                              ),
+                              h(
+                                EButton,
+                                {
+                                  type: 'danger',
+                                  loading: acceptanceMutation.isPending.value,
+                                  onClick: () =>
+                                    submitAcceptance(item, 'rejected'),
+                                },
+                                () => '验收拒绝',
+                              ),
+                            ])
+                          : null,
                         h(
-                          EButton,
-                          {
-                            type: 'primary',
-                            loading: acceptanceMutation.isPending.value,
-                            onClick: () => submitAcceptance(item, 'accepted'),
-                          },
-                          () => '验收通过',
-                        ),
-                        h(
-                          EButton,
-                          {
-                            type: 'danger',
-                            loading: acceptanceMutation.isPending.value,
-                            onClick: () => submitAcceptance(item, 'rejected'),
-                          },
-                          () => '验收拒绝',
+                          ETable,
+                          { data: item.requirement_acceptances },
+                          () => [
+                            h(ETableColumn, {
+                              label: '结果',
+                              width: 120,
+                              prop: 'status',
+                            }),
+                            h(ETableColumn, {
+                              label: '意见',
+                              prop: 'comment',
+                              minWidth: 220,
+                            }),
+                            h(ETableColumn, {
+                              label: '处理人',
+                              width: 140,
+                              prop: 'accepted_by.display_name',
+                            }),
+                            h(ETableColumn, {
+                              label: '时间',
+                              width: 180,
+                              prop: 'accepted_at',
+                            }),
+                          ],
                         ),
                       ])
                     : null,
-                  h(ETable, { data: item.requirement_acceptances }, () => [
-                    h(ETableColumn, {
-                      label: '结果',
-                      width: 120,
-                      prop: 'status',
-                    }),
-                    h(ETableColumn, {
-                      label: '意见',
-                      prop: 'comment',
-                      minWidth: 220,
-                    }),
-                    h(ETableColumn, {
-                      label: '处理人',
-                      width: 140,
-                      prop: 'accepted_by.display_name',
-                    }),
-                    h(ETableColumn, {
-                      label: '时间',
-                      width: 180,
-                      prop: 'accepted_at',
-                    }),
+                  h(ETabPane, { label: '开发', name: 'dev' }, () => [
+                    h(ETable, { data: item.dev_records }, () => [
+                      h(ETableColumn, {
+                        prop: 'record_type',
+                        label: '类型',
+                        width: 120,
+                      }),
+                      h(ETableColumn, { prop: 'title', label: '标题' }),
+                      h(ETableColumn, {
+                        prop: 'status',
+                        label: '状态',
+                        width: 120,
+                      }),
+                      h(ETableColumn, { prop: 'summary', label: '摘要' }),
+                    ]),
+                    h('div', { class: 'inline-form' }, [
+                      h(
+                        ESelect,
+                        {
+                          modelValue: devRecord.record_type,
+                          'onUpdate:modelValue': (v: string) =>
+                            (devRecord.record_type = v),
+                        },
+                        () => [
+                          h(EOption, { label: 'Branch', value: 'branch' }),
+                          h(EOption, { label: 'Commit', value: 'commit' }),
+                          h(EOption, { label: 'PR', value: 'pull_request' }),
+                          h(EOption, { label: 'CI', value: 'ci' }),
+                        ],
+                      ),
+                      h(EInput, {
+                        modelValue: devRecord.title,
+                        'onUpdate:modelValue': (v: string) =>
+                          (devRecord.title = v),
+                        placeholder: '标题',
+                      }),
+                      h(
+                        EButton,
+                        {
+                          type: 'primary',
+                          onClick: () => devMutation.mutate(item),
+                        },
+                        () => '添加',
+                      ),
+                    ]),
                   ]),
-                ])
-              : null,
-            h(ETabPane, { label: 'Dev', name: 'dev' }, () => [
-              h(ETable, { data: item.dev_records }, () => [
-                h(ETableColumn, {
-                  prop: 'record_type',
-                  label: 'Type',
-                  width: 120,
-                }),
-                h(ETableColumn, { prop: 'title', label: 'Title' }),
-                h(ETableColumn, {
-                  prop: 'status',
-                  label: 'Status',
-                  width: 120,
-                }),
-                h(ETableColumn, { prop: 'summary', label: 'Summary' }),
-              ]),
-              h('div', { class: 'inline-form' }, [
-                h(
-                  ESelect,
-                  {
-                    modelValue: devRecord.record_type,
-                    'onUpdate:modelValue': (v: string) =>
-                      (devRecord.record_type = v),
-                  },
-                  () => [
-                    h(EOption, { label: 'Branch', value: 'branch' }),
-                    h(EOption, { label: 'Commit', value: 'commit' }),
-                    h(EOption, { label: 'PR', value: 'pull_request' }),
-                    h(EOption, { label: 'CI', value: 'ci' }),
-                  ],
-                ),
-                h(EInput, {
-                  modelValue: devRecord.title,
-                  'onUpdate:modelValue': (v: string) => (devRecord.title = v),
-                  placeholder: 'Title',
-                }),
-                h(
-                  EButton,
-                  { type: 'primary', onClick: () => devMutation.mutate(item) },
-                  () => 'Add',
-                ),
-              ]),
-            ]),
-            h(ETabPane, { label: 'Tests', name: 'tests' }, () =>
-              h(ETable, { data: item.test_runs }, () => [
-                h(ETableColumn, { prop: 'title', label: 'Run' }),
-                h(ETableColumn, {
-                  prop: 'status',
-                  label: 'Status',
-                  width: 120,
-                }),
-                h(
-                  ETableColumn,
-                  { label: 'Executor', width: 140 },
-                  {
-                    default: ({ row }: any) =>
-                      row.executor?.display_name ?? '-',
-                  },
-                ),
-              ]),
-            ),
-            h(ETabPane, { label: 'History', name: 'history' }, () =>
-              h(ETimeline, () =>
-                item.history.map((entry) =>
-                  h(
-                    ETimelineItem,
-                    { timestamp: entry.created_at },
-                    () => `${entry.actor.display_name} ${entry.summary}`,
+                  h(ETabPane, { label: '测试', name: 'tests' }, () =>
+                    h(ETable, { data: item.test_runs }, () => [
+                      h(ETableColumn, { prop: 'title', label: '执行' }),
+                      h(ETableColumn, {
+                        prop: 'status',
+                        label: '状态',
+                        width: 120,
+                      }),
+                      h(
+                        ETableColumn,
+                        { label: '执行人', width: 140 },
+                        {
+                          default: ({ row }: any) =>
+                            row.executor?.display_name ?? '-',
+                        },
+                      ),
+                    ]),
                   ),
-                ),
+                  h(ETabPane, { label: '历史', name: 'history' }, () =>
+                    h(ETimeline, () =>
+                      item.history.map((entry) =>
+                        h(
+                          ETimelineItem,
+                          { timestamp: entry.created_at },
+                          () => `${entry.actor.display_name} ${entry.summary}`,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ],
+          },
         ),
       ])
     }

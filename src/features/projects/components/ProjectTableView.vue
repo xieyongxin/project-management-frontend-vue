@@ -181,4 +181,21 @@ const canArchive = (project: ProjectSummary) =>
   padding: var(--space-2);
   color: var(--color-text-secondary);
 }
+
+:deep(.el-table__fixed-right),
+:deep(.el-table__fixed-right-patch),
+:deep(.el-table__fixed-right .el-table__cell),
+:deep(.el-table__fixed-right .cell) {
+  background: var(--color-bg-surface);
+}
+
+:deep(.el-table__fixed-right) {
+  z-index: 4;
+  box-shadow: -8px 0 14px rgba(15, 23, 42, 0.06);
+}
+
+:deep(.el-table__row:hover .el-table__fixed-right .el-table__cell),
+:deep(.el-table__row.hover-row .el-table__fixed-right .el-table__cell) {
+  background: var(--el-table-row-hover-bg-color);
+}
 </style>

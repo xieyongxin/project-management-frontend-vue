@@ -46,17 +46,13 @@
       inactive-text="可见项目"
       @update:model-value="emit('scopeChange', $event ? 'all' : 'visible')"
     />
-    <AppButton plain>
-      <ElIcon><Filter /></ElIcon>
-      高级筛选
-    </AppButton>
   </FilterBar>
 </template>
 
 <script setup lang="ts">
-import { Filter, Search } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import { computed } from 'vue'
-import { AppButton, AppInput, AppSelect, FilterBar } from '@/shared/components'
+import { AppInput, AppSelect, FilterBar } from '@/shared/components'
 import type { ProjectListQuery } from '../model/project-list-query'
 import type { ProjectTemplateType } from '../model/project.types'
 

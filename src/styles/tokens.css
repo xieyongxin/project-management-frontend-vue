@@ -32,8 +32,8 @@
   --color-warning: var(--palette-amber-500);
   --color-danger: var(--palette-red-500);
   --color-info: var(--palette-cyan-500);
-  --color-bg-app: var(--palette-slate-100);
-  --color-bg-page: var(--palette-slate-100);
+  --color-bg-app: var(--palette-slate-50);
+  --color-bg-page: var(--palette-slate-50);
   --color-bg-surface: var(--palette-white);
   --color-bg-card: var(--palette-white);
   --color-bg-subtle: var(--palette-slate-50);
