@@ -4,6 +4,7 @@
  * Project Management Backend API
  * OpenAPI spec version: 0.2.0
  */
+import type { BugDetailDto } from './bugDetailDto'
 import type { TaskDetailDto } from './taskDetailDto'
 import type { UserLiteDto } from './userLiteDto'
 import type { WorkItemParentDto } from './workItemParentDto'
@@ -27,6 +28,7 @@ export interface WorkItemSummaryDto {
   created_by?: UserLiteDto | null
   updated_by?: UserLiteDto | null
   parent?: WorkItemParentDto | null
+  bug_detail?: BugDetailDto | null
   task_detail?: TaskDetailDto | null
   sprint_id?: string | null
   phase_id?: string | null

@@ -4,6 +4,7 @@
  * Project Management Backend API
  * OpenAPI spec version: 0.2.0
  */
+import type { BugDetailUpsertRequest } from './bugDetailUpsertRequest'
 import type { RequirementDetailUpsertRequest } from './requirementDetailUpsertRequest'
 import type { TaskDetailUpsertRequest } from './taskDetailUpsertRequest'
 
@@ -32,4 +33,5 @@ export interface WorkItemCreateRequest {
   progress_percent?: number
   requirement_detail?: RequirementDetailUpsertRequest | null
   task_detail?: TaskDetailUpsertRequest | null
+  bug_detail?: BugDetailUpsertRequest | null
 }

@@ -25,6 +25,40 @@
             @update:model-value="updateField('acceptance', $event)"
           />
         </ElFormItem>
+        <template v-if="kind === 'defect'">
+          <ElFormItem label="复现步骤" class="work-item-editor__rich-field">
+            <ElInput
+              :model-value="form.bug_detail.reproduce_steps"
+              type="textarea"
+              :rows="8"
+              @update:model-value="
+                updateField('bug_detail.reproduce_steps', $event)
+              "
+            />
+          </ElFormItem>
+          <div class="work-item-editor__date-grid">
+            <ElFormItem label="预期结果">
+              <ElInput
+                :model-value="form.bug_detail.expected_result"
+                type="textarea"
+                :rows="4"
+                @update:model-value="
+                  updateField('bug_detail.expected_result', $event)
+                "
+              />
+            </ElFormItem>
+            <ElFormItem label="实际结果">
+              <ElInput
+                :model-value="form.bug_detail.actual_result"
+                type="textarea"
+                :rows="4"
+                @update:model-value="
+                  updateField('bug_detail.actual_result', $event)
+                "
+              />
+            </ElFormItem>
+          </div>
+        </template>
       </template>
 
       <template v-else>
@@ -82,6 +116,13 @@
             @update:model-value="updateField('priority', $event)"
           />
         </ElFormItem>
+        <ElFormItem v-if="kind === 'defect'" label="严重程度">
+          <AppSelect
+            :model-value="form.severity"
+            :options="severityOptions"
+            @update:model-value="updateField('severity', $event)"
+          />
+        </ElFormItem>
         <ElFormItem label="负责人" required>
           <AppSelect
             :model-value="form.assignee_id"
@@ -132,7 +173,7 @@
           </ElFormItem>
         </template>
 
-        <template v-else>
+        <template v-else-if="kind === 'task'">
           <ElFormItem label="父需求">
             <AppSelect
               :model-value="form.parent_id"
@@ -195,6 +236,46 @@
           </ElFormItem>
         </template>
 
+        <template v-else>
+          <ElFormItem label="关联需求/任务">
+            <AppSelect
+              :model-value="form.parent_id"
+              clearable
+              :options="requirementOptions"
+              @update:model-value="updateField('parent_id', $event)"
+            />
+          </ElFormItem>
+          <ElFormItem label="缺陷类型">
+            <AppSelect
+              :model-value="form.bug_detail.bug_type"
+              clearable
+              :options="bugTypeOptions"
+              @update:model-value="updateField('bug_detail.bug_type', $event)"
+            />
+          </ElFormItem>
+          <ElFormItem label="发现环境">
+            <ElInput
+              :model-value="form.bug_detail.environment"
+              @update:model-value="
+                updateField('bug_detail.environment', $event)
+              "
+            />
+          </ElFormItem>
+          <ElFormItem v-if="mode === 'detail'" label="修复说明">
+            <ElInput
+              :model-value="form.bug_detail.fix_summary"
+              type="textarea"
+              :rows="4"
+              @update:model-value="
+                updateField('bug_detail.fix_summary', $event)
+              "
+            />
+          </ElFormItem>
+          <ElFormItem v-if="mode === 'detail'" label="重开次数">
+            <ElInput :model-value="form.bug_detail.reopened_count" disabled />
+          </ElFormItem>
+        </template>
+
         <ElFormItem
           v-if="mode === 'detail' && kind === 'requirement'"
           label="验收标准"
@@ -229,6 +310,7 @@ export interface WorkItemEditorForm {
   description: string
   acceptance: string
   priority?: string
+  severity?: string
   assignee_id?: string
   parent_id?: string
   start_at: string
@@ -245,6 +327,20 @@ export interface WorkItemEditorForm {
     review_required: boolean
     code_review_url: string
   }
+  bug_detail: {
+    bug_type: string
+    environment: string
+    reproduce_steps: string
+    expected_result: string
+    actual_result: string
+    found_in_version_id?: string | null
+    fixed_in_version_id?: string | null
+    source_test_run_id?: string | null
+    source_test_plan_id?: string | null
+    regression_test_run_id?: string | null
+    fix_summary: string
+    reopened_count: number
+  }
 }
 
 export type WorkItemEditorField =
@@ -252,6 +348,7 @@ export type WorkItemEditorField =
   | 'description'
   | 'acceptance'
   | 'priority'
+  | 'severity'
   | 'assignee_id'
   | 'parent_id'
   | 'start_at'
@@ -264,11 +361,17 @@ export type WorkItemEditorField =
   | 'task_detail.technical_notes'
   | 'task_detail.review_required'
   | 'task_detail.code_review_url'
+  | 'bug_detail.bug_type'
+  | 'bug_detail.environment'
+  | 'bug_detail.reproduce_steps'
+  | 'bug_detail.expected_result'
+  | 'bug_detail.actual_result'
+  | 'bug_detail.fix_summary'
 
 const props = withDefaults(
   defineProps<{
     mode: 'create' | 'detail'
-    kind: 'requirement' | 'task'
+    kind: 'requirement' | 'task' | 'defect'
     form: WorkItemEditorForm
     members?: ProjectMember[]
     requirements?: WorkItemSummary[]
@@ -294,6 +397,14 @@ const priorityOptions = [
   { label: '低', value: 'low' },
 ]
 
+const severityOptions = [
+  { label: '阻塞', value: 'blocker' },
+  { label: '严重', value: 'critical' },
+  { label: '主要', value: 'major' },
+  { label: '次要', value: 'minor' },
+  { label: '提示', value: 'trivial' },
+]
+
 const taskCategoryOptions = [
   { label: '开发', value: 'development' },
   { label: '设计', value: 'design' },
@@ -309,6 +420,16 @@ const reviewOptions = [
   { label: '不需要', value: false },
 ]
 
+const bugTypeOptions = [
+  { label: '功能', value: 'functional' },
+  { label: '界面', value: 'ui' },
+  { label: '性能', value: 'performance' },
+  { label: '兼容性', value: 'compatibility' },
+  { label: '安全', value: 'security' },
+  { label: '数据', value: 'data' },
+  { label: '其他', value: 'other' },
+]
+
 const memberOptions = computed(() =>
   props.members.map((member) => ({
     label: member.user.display_name,
@@ -317,15 +438,24 @@ const memberOptions = computed(() =>
 )
 
 const requirementOptions = computed(() =>
-  props.requirements.map((requirement) => ({
-    label: `${requirement.number} ${requirement.title}`,
-    value: requirement.id,
-  })),
+  props.requirements.map((requirement) => {
+    const typeLabel = requirement.type === 'task' ? '任务' : '需求'
+    return {
+      label: `${typeLabel} ${requirement.number} ${requirement.title}`,
+      value: requirement.id,
+    }
+  }),
 )
 
-const titlePlaceholder = computed(() =>
-  props.kind === 'task' ? '请输入任务标题' : '请输入需求标题',
-)
+const titlePlaceholder = computed(() => {
+  if (props.kind === 'task') {
+    return '请输入任务标题'
+  }
+  if (props.kind === 'defect') {
+    return '请输入缺陷标题'
+  }
+  return '请输入需求标题'
+})
 </script>
 
 <style scoped>

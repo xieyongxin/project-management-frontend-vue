@@ -4,6 +4,7 @@
  * Project Management Backend API
  * OpenAPI spec version: 0.2.0
  */
+import type { BugDetailDto } from './bugDetailDto'
 import type { DevRecordDto } from './devRecordDto'
 import type { RequirementAcceptanceDto } from './requirementAcceptanceDto'
 import type { RequirementDetailDto } from './requirementDetailDto'
@@ -18,6 +19,7 @@ export type WorkItemDto = WorkItemSummaryDto & {
   description: string
   acceptance: string
   requirement_detail?: RequirementDetailDto | null
+  bug_detail?: BugDetailDto | null
   requirement_acceptances: RequirementAcceptanceDto[]
   available_transitions: WorkflowTransitionDto[]
   comments: WorkItemCommentDto[]

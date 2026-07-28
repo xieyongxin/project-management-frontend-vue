@@ -35,6 +35,9 @@
           <EButton :disabled="isProjectArchived" @click="openCreateTask">
             新建任务
           </EButton>
+          <EButton :disabled="isProjectArchived" @click="openCreateDefect">
+            新建缺陷
+          </EButton>
         </div>
       </header>
 
@@ -77,7 +80,36 @@
       </nav>
 
       <main class="project-detail-content">
-        <WorkItemDetailPanel v-if="workItemId" />
+        <section v-if="createKind" class="project-detail-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">{{ createPanelEyebrow }}</p>
+              <h2>{{ createPanelTitle }}</h2>
+            </div>
+            <EButton @click="cancelCreateWorkItem">返回列表</EButton>
+          </div>
+          <WorkItemEditor
+            mode="create"
+            :kind="createKind"
+            :form="workItemForm"
+            :members="membersQuery.data.value ?? []"
+            :requirements="createParentOptions"
+            @update-field="updateWorkItemFormField"
+          >
+            <template #actions>
+              <EButton @click="cancelCreateWorkItem">取消</EButton>
+              <EButton
+                type="primary"
+                :loading="createWorkItemMutation.isPending.value"
+                @click="submitWorkItem"
+              >
+                创建
+              </EButton>
+            </template>
+          </WorkItemEditor>
+        </section>
+
+        <WorkItemDetailPanel v-else-if="workItemId" />
 
         <section
           v-else-if="section === 'overview'"
@@ -120,16 +152,10 @@
         </section>
 
         <WorkItemListPanel
-          v-else-if="['requirements', 'tasks'].includes(section)"
+          v-else-if="['requirements', 'tasks', 'defects'].includes(section)"
           :key="section"
           :kind="section"
         />
-        <section v-else-if="section === 'defects'" class="project-detail-panel">
-          <EmptyState
-            title="模块待补充"
-            description="缺陷模块将在后续模块确认后接入统一工作项组件。"
-          />
-        </section>
         <SprintPanel v-else-if="section === 'sprints'" />
         <PhasePanel v-else-if="section === 'phases'" />
         <VersionPanel v-else-if="section === 'versions'" />
@@ -148,31 +174,6 @@
           />
         </section>
       </main>
-
-      <EDialog
-        v-model="createDialogVisible"
-        :title="createMode === 'task' ? '创建任务' : '创建需求'"
-        width="1040px"
-      >
-        <WorkItemEditor
-          mode="create"
-          :kind="createMode"
-          :form="workItemForm"
-          :members="membersQuery.data.value ?? []"
-          :requirements="requirementOptionsQuery.data.value?.data ?? []"
-          @update-field="updateWorkItemFormField"
-        />
-        <template #footer>
-          <EButton @click="createDialogVisible = false">取消</EButton>
-          <EButton
-            type="primary"
-            :loading="createWorkItemMutation.isPending.value"
-            @click="submitWorkItem"
-          >
-            创建
-          </EButton>
-        </template>
-      </EDialog>
 
       <EDialog v-model="projectEditVisible" title="编辑项目资料" width="720px">
         <EForm label-width="104px">
@@ -344,6 +345,17 @@ const ETimelineItem = ElTimelineItem as any
 const projectId = computed(() => String(route.params.projectId))
 const section = computed(() => String(route.params.section ?? 'overview'))
 const workItemId = computed(() => String(route.params.workItemId ?? ''))
+type WorkItemCreateMode = 'requirement' | 'task' | 'defect'
+const createKind = computed<WorkItemCreateMode | ''>(() => {
+  if (route.query.mode !== 'create') {
+    return ''
+  }
+  const type = String(route.query.type ?? '')
+  if (type === 'requirement' || type === 'task' || type === 'defect') {
+    return type
+  }
+  return ''
+})
 
 const navigationQuery = useProjectNavigation(projectId)
 const overviewQuery = useProjectOverview(projectId)
@@ -410,8 +422,44 @@ const requirementOptionsQuery = useQuery({
   enabled: computed(() => Boolean(projectId.value)),
 })
 
-const createDialogVisible = ref(false)
-const createMode = ref<'requirement' | 'task'>('requirement')
+const taskOptionsQuery = useQuery({
+  queryKey: computed(() => ['projects', projectId.value, 'tasks', 'options']),
+  queryFn: () =>
+    projectDetailApi.workItems(projectId.value, 'tasks', {
+      page: 1,
+      page_size: 100,
+    }),
+  enabled: computed(() => Boolean(projectId.value)),
+})
+
+const createMode = ref<WorkItemCreateMode>('requirement')
+const createPanelTitle = computed(() => {
+  if (createKind.value === 'task') {
+    return '创建任务'
+  }
+  if (createKind.value === 'defect') {
+    return '创建缺陷'
+  }
+  return '创建需求'
+})
+const createPanelEyebrow = computed(() => {
+  if (createKind.value === 'task') {
+    return '项目工作项 / 任务'
+  }
+  if (createKind.value === 'defect') {
+    return '项目工作项 / 缺陷'
+  }
+  return '项目工作项 / 需求'
+})
+const createParentOptions = computed(() => {
+  if (createKind.value === 'defect') {
+    return [
+      ...(requirementOptionsQuery.data.value?.data ?? []),
+      ...(taskOptionsQuery.data.value?.data ?? []),
+    ]
+  }
+  return requirementOptionsQuery.data.value?.data ?? []
+})
 const projectEditVisible = ref(false)
 type WorkItemForm = WorkItemCreatePayload & {
   title: string
@@ -430,6 +478,20 @@ type WorkItemForm = WorkItemCreatePayload & {
     technical_notes: string
     review_required: boolean
     code_review_url: string
+  }
+  bug_detail: {
+    bug_type: string
+    environment: string
+    reproduce_steps: string
+    expected_result: string
+    actual_result: string
+    found_in_version_id?: string | null
+    fixed_in_version_id?: string | null
+    source_test_run_id?: string | null
+    source_test_plan_id?: string | null
+    regression_test_run_id?: string | null
+    fix_summary: string
+    reopened_count: number
   }
 }
 
@@ -456,13 +518,26 @@ const workItemForm = reactive<WorkItemForm>({
     review_required: true,
     code_review_url: '',
   },
+  bug_detail: {
+    bug_type: 'functional',
+    environment: '',
+    reproduce_steps: '',
+    expected_result: '',
+    actual_result: '',
+    found_in_version_id: null,
+    fixed_in_version_id: null,
+    source_test_run_id: null,
+    source_test_plan_id: null,
+    regression_test_run_id: null,
+    fix_summary: '',
+    reopened_count: 0,
+  },
 })
 
 const createWorkItemMutation = useMutation({
   mutationFn: (payload: WorkItemCreatePayload) =>
     projectDetailApi.createWorkItem(payload),
   onSuccess: async (item) => {
-    createDialogVisible.value = false
     await queryClient.invalidateQueries({ queryKey: ['projects'] })
     await router.push(`/projects/${projectId.value}/work-items/${item.id}`)
   },
@@ -497,6 +572,60 @@ function openProjectEdit() {
   })
   projectEditVisible.value = true
 }
+
+function resetWorkItemForm(kind: WorkItemCreateMode) {
+  createMode.value = kind
+  Object.assign(workItemForm, {
+    project_id: projectId.value,
+    type: kind === 'task' ? 'task' : kind === 'defect' ? 'bug' : 'story',
+    title: '',
+    description: '<p></p>',
+    acceptance: kind === 'requirement' ? '<p></p>' : '',
+    priority: 'medium',
+    severity: '',
+    start_at: '',
+    end_at: '',
+    story_points: 0,
+    estimated_hours: 0,
+    remaining_hours: 0,
+    assignee_id: undefined,
+    parent_id: undefined,
+    requirement_detail: {
+      source: '',
+      business_value: '',
+    },
+    task_detail: {
+      category: 'development',
+      technical_notes: '',
+      review_required: true,
+      code_review_url: '',
+    },
+    bug_detail: {
+      bug_type: 'functional',
+      environment: '',
+      reproduce_steps: '',
+      expected_result: '',
+      actual_result: '',
+      found_in_version_id: null,
+      fixed_in_version_id: null,
+      source_test_run_id: null,
+      source_test_plan_id: null,
+      regression_test_run_id: null,
+      fix_summary: '',
+      reopened_count: 0,
+    },
+  })
+}
+
+watch(
+  () => [createKind.value, projectId.value] as const,
+  ([kind]) => {
+    if (kind) {
+      resetWorkItemForm(kind)
+    }
+  },
+  { immediate: true },
+)
 
 function submitProjectEdit() {
   if (!projectEditForm.name.trim()) {
@@ -544,65 +673,33 @@ function submitProjectEdit() {
 }
 
 function openCreateRequirement() {
-  createMode.value = 'requirement'
-  Object.assign(workItemForm, {
-    project_id: projectId.value,
-    type: 'story',
-    title: '',
-    description: '<p></p>',
-    acceptance: '<p></p>',
-    priority: 'medium',
-    severity: '',
-    start_at: '',
-    end_at: '',
-    story_points: 0,
-    estimated_hours: 0,
-    remaining_hours: 0,
-    assignee_id: undefined,
-    parent_id: undefined,
-    requirement_detail: {
-      source: '',
-      business_value: '',
-    },
-    task_detail: {
-      category: 'development',
-      technical_notes: '',
-      review_required: true,
-      code_review_url: '',
-    },
+  resetWorkItemForm('requirement')
+  void router.push({
+    path: `/projects/${projectId.value}/requirements`,
+    query: { mode: 'create', type: 'requirement' },
   })
-  createDialogVisible.value = true
 }
 
 function openCreateTask() {
-  createMode.value = 'task'
-  Object.assign(workItemForm, {
-    project_id: projectId.value,
-    type: 'task',
-    title: '',
-    description: '<p></p>',
-    acceptance: '',
-    priority: 'medium',
-    severity: '',
-    start_at: '',
-    end_at: '',
-    story_points: 0,
-    estimated_hours: 0,
-    remaining_hours: 0,
-    assignee_id: undefined,
-    parent_id: undefined,
-    requirement_detail: {
-      source: '',
-      business_value: '',
-    },
-    task_detail: {
-      category: 'development',
-      technical_notes: '',
-      review_required: true,
-      code_review_url: '',
-    },
+  resetWorkItemForm('task')
+  void router.push({
+    path: `/projects/${projectId.value}/tasks`,
+    query: { mode: 'create', type: 'task' },
   })
-  createDialogVisible.value = true
+}
+
+function openCreateDefect() {
+  resetWorkItemForm('defect')
+  void router.push({
+    path: `/projects/${projectId.value}/defects`,
+    query: { mode: 'create', type: 'defect' },
+  })
+}
+
+function cancelCreateWorkItem() {
+  void router.push({
+    path: `/projects/${projectId.value}/${section.value}`,
+  })
 }
 
 function isRichTextBlank(value: string) {
@@ -649,6 +746,9 @@ function updateFormField(
     case 'priority':
       form.priority = stringFieldValue(value)
       break
+    case 'severity':
+      form.severity = stringFieldValue(value)
+      break
     case 'assignee_id':
       if (value) {
         form.assignee_id = stringFieldValue(value)
@@ -692,6 +792,24 @@ function updateFormField(
       break
     case 'task_detail.code_review_url':
       form.task_detail.code_review_url = stringFieldValue(value)
+      break
+    case 'bug_detail.bug_type':
+      form.bug_detail.bug_type = stringFieldValue(value)
+      break
+    case 'bug_detail.environment':
+      form.bug_detail.environment = stringFieldValue(value)
+      break
+    case 'bug_detail.reproduce_steps':
+      form.bug_detail.reproduce_steps = stringFieldValue(value)
+      break
+    case 'bug_detail.expected_result':
+      form.bug_detail.expected_result = stringFieldValue(value)
+      break
+    case 'bug_detail.actual_result':
+      form.bug_detail.actual_result = stringFieldValue(value)
+      break
+    case 'bug_detail.fix_summary':
+      form.bug_detail.fix_summary = stringFieldValue(value)
   }
 }
 
@@ -702,11 +820,15 @@ function updateWorkItemFormField(field: WorkItemEditorField, value: unknown) {
 function submitWorkItem() {
   if (!workItemForm.title.trim()) {
     ElMessage.warning(
-      createMode.value === 'task' ? '请输入任务标题' : '请输入需求标题',
+      createMode.value === 'task'
+        ? '请输入任务标题'
+        : createMode.value === 'defect'
+          ? '请输入缺陷标题'
+          : '请输入需求标题',
     )
     return
   }
-  if (!workItemForm.assignee_id) {
+  if (createMode.value !== 'defect' && !workItemForm.assignee_id) {
     ElMessage.warning(
       createMode.value === 'task' ? '请选择任务负责人' : '请选择需求负责人',
     )
@@ -751,13 +873,20 @@ function submitWorkItem() {
   }
   createWorkItemMutation.mutate({
     ...workItemForm,
-    type: createMode.value === 'task' ? 'task' : 'story',
     requirement_detail:
       createMode.value === 'requirement'
         ? { ...workItemForm.requirement_detail }
         : null,
     task_detail:
       createMode.value === 'task' ? { ...workItemForm.task_detail } : null,
+    bug_detail:
+      createMode.value === 'defect' ? { ...workItemForm.bug_detail } : null,
+    type:
+      createMode.value === 'task'
+        ? 'task'
+        : createMode.value === 'defect'
+          ? 'bug'
+          : 'story',
   })
 }
 
@@ -798,29 +927,46 @@ const WorkItemListPanel = defineComponent({
       },
     })
     const title = computed(() =>
-      props.kind === 'tasks' ? '任务管理' : '需求管理',
-    )
-    const statusOptions = computed(() =>
       props.kind === 'tasks'
-        ? [
-            { label: '待处理', value: 'pending' },
-            { label: '进行中', value: 'in_progress' },
-            { label: '代码评审', value: 'code_review' },
-            { label: '待测试', value: 'ready_for_test' },
-            { label: '已完成', value: 'completed' },
-            { label: '已关闭', value: 'closed' },
-          ]
-        : [
-            { label: '草稿', value: 'draft' },
-            { label: '待评审', value: 'reviewing' },
-            { label: '已就绪', value: 'ready' },
-            { label: '开发中', value: 'developing' },
-            { label: '测试中', value: 'testing' },
-            { label: '待验收', value: 'accepting' },
-            { label: '已完成', value: 'completed' },
-            { label: '已关闭', value: 'closed' },
-          ],
+        ? '任务管理'
+        : props.kind === 'defects'
+          ? '缺陷管理'
+          : '需求管理',
     )
+    const statusOptions = computed(() => {
+      if (props.kind === 'tasks') {
+        return [
+          { label: '待处理', value: 'pending' },
+          { label: '进行中', value: 'in_progress' },
+          { label: '代码评审', value: 'code_review' },
+          { label: '待测试', value: 'ready_for_test' },
+          { label: '已完成', value: 'completed' },
+          { label: '已关闭', value: 'closed' },
+        ]
+      }
+      if (props.kind === 'defects') {
+        return [
+          { label: '新提交', value: 'submitted' },
+          { label: '处理中', value: 'processing' },
+          { label: '挂起', value: 'suspended' },
+          { label: '已修复', value: 'fixed' },
+          { label: '回归中', value: 'regressing' },
+          { label: '重新打开', value: 'reopened' },
+          { label: '已拒绝', value: 'rejected' },
+          { label: '已关闭', value: 'closed' },
+        ]
+      }
+      return [
+        { label: '草稿', value: 'draft' },
+        { label: '待评审', value: 'reviewing' },
+        { label: '已就绪', value: 'ready' },
+        { label: '开发中', value: 'developing' },
+        { label: '测试中', value: 'testing' },
+        { label: '待验收', value: 'accepting' },
+        { label: '已完成', value: 'completed' },
+        { label: '已关闭', value: 'closed' },
+      ]
+    })
     return () =>
       h('section', { class: 'project-detail-panel' }, [
         h('div', { class: 'panel-heading' }, [
@@ -882,6 +1028,13 @@ const WorkItemListPanel = defineComponent({
               { label: '负责人', width: 140 },
               { default: ({ row }: any) => row.assignee?.display_name ?? '-' },
             ),
+            props.kind === 'defects'
+              ? h(ETableColumn, {
+                  prop: 'severity',
+                  label: '严重程度',
+                  width: 120,
+                })
+              : null,
             props.kind === 'tasks'
               ? h(
                   ETableColumn,
@@ -893,14 +1046,25 @@ const WorkItemListPanel = defineComponent({
                         : '独立任务',
                   },
                 )
-              : h(
-                  ETableColumn,
-                  { label: '验收', width: 120 },
-                  {
-                    default: ({ row }: any) =>
-                      acceptanceStatusLabel[row.acceptance_status] ?? '-',
-                  },
-                ),
+              : props.kind === 'defects'
+                ? h(
+                    ETableColumn,
+                    { label: '关联项', minWidth: 220 },
+                    {
+                      default: ({ row }: any) =>
+                        row.parent
+                          ? `${row.parent.number} ${row.parent.title}`
+                          : '未关联',
+                    },
+                  )
+                : h(
+                    ETableColumn,
+                    { label: '验收', width: 120 },
+                    {
+                      default: ({ row }: any) =>
+                        acceptanceStatusLabel[row.acceptance_status] ?? '-',
+                    },
+                  ),
             props.kind === 'tasks'
               ? h(ETableColumn, {
                   prop: 'remaining_hours',
@@ -919,6 +1083,19 @@ const WorkItemListPanel = defineComponent({
                           ? '已关联'
                           : '需要'
                         : '不需要',
+                  },
+                )
+              : null,
+            props.kind === 'defects'
+              ? h(
+                  ETableColumn,
+                  { label: '缺陷类型', width: 140 },
+                  {
+                    default: ({ row }: any) => {
+                      const bugType = row.bug_detail?.bug_type as
+                        string | undefined
+                      return bugType?.trim() ? bugType : '未分类'
+                    },
                   },
                 )
               : null,
@@ -979,7 +1156,25 @@ const WorkItemDetailPanel = defineComponent({
         review_required: true,
         code_review_url: '',
       },
+      bug_detail: {
+        bug_type: 'functional',
+        environment: '',
+        reproduce_steps: '',
+        expected_result: '',
+        actual_result: '',
+        found_in_version_id: null as string | null,
+        fixed_in_version_id: null as string | null,
+        source_test_run_id: null as string | null,
+        source_test_plan_id: null as string | null,
+        regression_test_run_id: null as string | null,
+        fix_summary: '',
+        reopened_count: 0,
+      },
     })
+    const detailParentOptions = computed(() => [
+      ...(requirementOptionsQuery.data.value?.data ?? []),
+      ...(taskOptionsQuery.data.value?.data ?? []),
+    ])
     watch(
       () => query.data.value,
       (item) => {
@@ -1009,6 +1204,21 @@ const WorkItemDetailPanel = defineComponent({
             review_required: item.task_detail?.review_required ?? true,
             code_review_url: item.task_detail?.code_review_url ?? '',
           },
+          bug_detail: {
+            bug_type: item.bug_detail?.bug_type ?? 'functional',
+            environment: item.bug_detail?.environment ?? '',
+            reproduce_steps: item.bug_detail?.reproduce_steps ?? '',
+            expected_result: item.bug_detail?.expected_result ?? '',
+            actual_result: item.bug_detail?.actual_result ?? '',
+            found_in_version_id: item.bug_detail?.found_in_version_id ?? null,
+            fixed_in_version_id: item.bug_detail?.fixed_in_version_id ?? null,
+            source_test_run_id: item.bug_detail?.source_test_run_id ?? null,
+            source_test_plan_id: item.bug_detail?.source_test_plan_id ?? null,
+            regression_test_run_id:
+              item.bug_detail?.regression_test_run_id ?? null,
+            fix_summary: item.bug_detail?.fix_summary ?? '',
+            reopened_count: item.bug_detail?.reopened_count ?? 0,
+          },
         })
       },
       { immediate: true },
@@ -1032,6 +1242,7 @@ const WorkItemDetailPanel = defineComponent({
           remaining_hours: draft.remaining_hours,
           requirement_detail: { ...draft.requirement_detail },
           task_detail: { ...draft.task_detail } as any,
+          bug_detail: { ...draft.bug_detail } as any,
           row_version: item.row_version,
         }),
       onSuccess: () => query.refetch(),
@@ -1109,10 +1320,18 @@ const WorkItemDetailPanel = defineComponent({
           WorkItemEditor,
           {
             mode: 'detail',
-            kind: item.type === 'task' ? 'task' : 'requirement',
+            kind:
+              item.type === 'task'
+                ? 'task'
+                : item.type === 'bug'
+                  ? 'defect'
+                  : 'requirement',
             form: draft,
             members: membersQuery.data.value ?? [],
-            requirements: requirementOptionsQuery.data.value?.data ?? [],
+            requirements:
+              item.type === 'bug'
+                ? detailParentOptions.value
+                : (requirementOptionsQuery.data.value?.data ?? []),
             item,
             onUpdateField: (field: WorkItemEditorField, value: unknown) =>
               updateFormField(draft, field, value),
@@ -1577,6 +1796,18 @@ const TestPanel = defineComponent({
             description: '<p>Auto created from test failure</p>',
             priority: 'high',
             severity: 'major',
+            bug_detail: {
+              bug_type: 'functional',
+              environment: '',
+              reproduce_steps: 'Auto created from failed test run',
+              expected_result: '',
+              actual_result: '',
+              source_test_run_id: runId,
+              source_test_plan_id: runQuery.data.value?.plan_id ?? null,
+              regression_test_run_id: null,
+              fix_summary: '',
+              reopened_count: 0,
+            },
           },
         } as any),
       onSuccess: () => runQuery.refetch(),

@@ -7,6 +7,8 @@
 
 export * from './activityEventDto'
 export * from './activityEventDtoTone'
+export * from './bugDetailDto'
+export * from './bugDetailUpsertRequest'
 export * from './csrfTokenResponse'
 export * from './currentUserDto'
 export * from './devRecordCreateRequest'
