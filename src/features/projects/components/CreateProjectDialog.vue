@@ -91,15 +91,15 @@
           <ElRadioGroup v-model="form.visibility" class="visibility-choice">
             <ElRadio value="private" class="visibility-choice__card">
               <strong>私有</strong>
-              <span
-                >仅项目成员、项目负责人和管理员可访问，适合未公开立项或敏感项目。</span
-              >
+              <span>
+                仅项目成员、项目负责人和管理员可访问，适合未公开立项或敏感项目。
+              </span>
             </ElRadio>
             <ElRadio value="public" class="visibility-choice__card">
               <strong>公开</strong>
-              <span
-                >公司内登录用户均可查看项目基础信息，适合跨团队协作和透明进展。</span
-              >
+              <span>
+                公司内登录用户均可查看项目基础信息，适合跨团队协作和透明进展。
+              </span>
             </ElRadio>
           </ElRadioGroup>
         </ElFormItem>
