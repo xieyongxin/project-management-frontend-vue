@@ -75,23 +75,37 @@ watch(
 
 <style scoped>
 .rich-text-editor {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  width: 100%;
+  border: 1px solid rgba(40, 70, 100, 0.12);
+  border-radius: 6px;
   overflow: hidden;
   background: var(--color-bg-surface);
 }
 
+.rich-text-editor:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-focus);
+}
+
 .rich-text-editor__toolbar {
   display: flex;
+  min-height: 42px;
+  align-items: center;
   gap: 6px;
   padding: 8px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-muted);
+  border-bottom: 1px solid rgba(40, 70, 100, 0.1);
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.rich-text-editor__toolbar :deep(.el-button) {
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 .rich-text-editor__content {
   min-height: 140px;
-  padding: 12px;
+  padding: 16px 18px;
 }
 
 :deep(.rich-text-editor__surface) {

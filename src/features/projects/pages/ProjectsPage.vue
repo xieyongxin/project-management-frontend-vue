@@ -1,6 +1,6 @@
 <template>
   <section class="projects-page" aria-label="项目管理">
-    <PageHeader title="项目管理" breadcrumb="项目管理 / 项目列表">
+    <PageHeader title="项目管理">
       <template #actions>
         <AppButton type="primary" @click="createDialogVisible = true">
           <ElIcon><Plus /></ElIcon>
@@ -20,12 +20,10 @@
       :query="query"
       :project-types="projectCreateTemplate.project_types"
       :owner-options="ownerOptions"
-      :is-system-admin="isSystemAdmin"
       @keyword-change="handleKeywordChange"
       @method-change="handleMethodChange"
       @status-change="handleStatusChange"
       @owner-change="handleOwnerChange"
-      @scope-change="handleScopeChange"
       @risk-status-change="handleRiskStatusChange"
     />
 
@@ -229,13 +227,6 @@ const handleOwnerChange = (value: unknown) => {
   })
 }
 
-const handleScopeChange = (value: unknown) => {
-  updateQuery({
-    scope: value === 'all' && isSystemAdmin.value ? 'all' : 'visible',
-    page: 1,
-  })
-}
-
 const handleRiskStatusChange = (value: unknown) => {
   updateQuery({
     riskStatus: normalizeEmpty(value) as ProjectListQuery['riskStatus'],
@@ -279,7 +270,17 @@ const handleArchiveProject = async (project: ProjectSummary) => {
         payload: { row_version: project.row_version },
       },
       {
-        onSuccess: () => ElMessage.success('项目已归档'),
+        onSuccess: () => {
+          ElMessage.success('项目已归档')
+          updateQuery({
+            status: 'archived',
+            riskStatus: undefined,
+            page: 1,
+          })
+        },
+        onError: () => {
+          ElMessage.error('归档失败，请刷新项目列表后重试。')
+        },
       },
     )
   } catch {

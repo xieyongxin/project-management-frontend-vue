@@ -39,13 +39,6 @@
       :options="riskStatusOptions"
       @update:model-value="emit('riskStatusChange', $event)"
     />
-    <ElSwitch
-      v-if="canViewAllProjects"
-      :model-value="query.scope === 'all'"
-      active-text="全部项目"
-      inactive-text="可见项目"
-      @update:model-value="emit('scopeChange', $event ? 'all' : 'visible')"
-    />
   </FilterBar>
 </template>
 
@@ -55,12 +48,12 @@ import { computed } from 'vue'
 import { AppInput, AppSelect, FilterBar } from '@/shared/components'
 import type { ProjectListQuery } from '../model/project-list-query'
 import type { ProjectTemplateType } from '../model/project.types'
+import { methodLabel } from '../model/project-labels'
 
 const props = defineProps<{
   query: ProjectListQuery
   projectTypes?: ProjectTemplateType[]
   ownerOptions?: { label: string; value: string }[]
-  isSystemAdmin?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -68,19 +61,17 @@ const emit = defineEmits<{
   methodChange: [value: unknown]
   statusChange: [value: unknown]
   ownerChange: [value: unknown]
-  scopeChange: [value: unknown]
   riskStatusChange: [value: unknown]
 }>()
 
 const methodOptions = computed(
   () =>
     props.projectTypes?.map((item) => ({
-      label: item.name,
+      label: methodLabel[item.method] ?? item.name,
       value: item.method,
     })) ?? [],
 )
 const filterOwnerOptions = computed(() => props.ownerOptions ?? [])
-const canViewAllProjects = computed(() => props.isSystemAdmin ?? false)
 const statusOptions = [
   { label: '进行中', value: 'active' },
   { label: '暂停', value: 'paused' },

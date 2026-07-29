@@ -2,6 +2,7 @@
   <ElDialog
     :model-value="modelValue"
     width="960px"
+    align-center
     class="create-project-dialog"
     title="新建项目"
     @close="close"
@@ -45,7 +46,7 @@
           >
             <ElRadio :model-value="form.method" :value="option.method" />
             <ElIcon><DataBoard /></ElIcon>
-            <strong>{{ option.name }}</strong>
+            <strong>{{ projectTypeName(option) }}</strong>
             <span>{{ option.description }}</span>
             <em>默认最新版本</em>
           </button>
@@ -159,6 +160,7 @@ import type {
   ProjectFlowNode,
   ProjectTemplateType,
 } from '../model/project.types'
+import { methodLabel } from '../model/project-labels'
 
 const props = defineProps<{
   modelValue: boolean
@@ -218,6 +220,9 @@ const activeFlow = computed(() =>
     (left, right) => left.sort_order - right.sort_order,
   ),
 )
+
+const projectTypeName = (option: ProjectTemplateType) =>
+  methodLabel[option.method] ?? option.name
 
 watch(
   () =>
@@ -310,18 +315,21 @@ const submit = () => {
 .create-project-form {
   display: grid;
   gap: var(--space-3);
-  min-height: 480px;
+  min-height: 400px;
 }
 
 .create-project-step {
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .create-project-form {
   grid-template-columns: minmax(0, 1fr);
+  padding: 0 var(--space-5);
 }
 
-.flow-preview {
+.flow-preview,
+.project-type-picker {
   padding: var(--space-3);
   background: var(--color-bg-subtle);
   border: var(--border-width) solid var(--color-border);
@@ -336,7 +344,7 @@ const submit = () => {
 
 .flow-preview__nodes {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
@@ -353,13 +361,13 @@ const submit = () => {
   display: inline-flex;
   width: 100%;
   min-width: 0;
-  min-height: 34px;
+  min-height: 26px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 6px 8px;
+  gap: 5px;
+  padding: 4px 6px;
   overflow: hidden;
-  font-size: var(--font-size-caption);
+  font-size: 12px;
   font-weight: var(--font-weight-semibold);
   text-align: center;
   text-overflow: ellipsis;
@@ -370,14 +378,14 @@ const submit = () => {
 
 .flow-preview__dot {
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
 }
 
 .flow-preview__arrow {
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: 11px;
   line-height: 1;
   text-align: center;
 }
@@ -396,7 +404,7 @@ const submit = () => {
 .project-type-card {
   position: relative;
   display: grid;
-  min-height: 220px;
+  min-height: 170px;
   place-items: center;
   gap: var(--space-1);
   padding: var(--space-3);
@@ -418,10 +426,10 @@ const submit = () => {
 }
 
 .project-type-card .el-icon {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   color: var(--color-primary);
-  font-size: 32px;
+  font-size: 28px;
   background: var(--color-primary-subtle);
   border-radius: var(--radius-lg);
 }
@@ -499,10 +507,20 @@ const submit = () => {
   .create-project-step,
   .create-project-form {
     grid-template-columns: 1fr;
+    padding: 0;
   }
 
   .visibility-choice {
     grid-template-columns: 1fr;
   }
+}
+
+:deep(.el-dialog) {
+  max-width: calc(100vw - 48px);
+}
+
+:deep(.el-dialog__body) {
+  max-height: calc(100vh - 220px);
+  overflow: hidden;
 }
 </style>

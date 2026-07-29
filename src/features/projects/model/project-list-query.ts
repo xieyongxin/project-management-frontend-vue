@@ -8,7 +8,6 @@ export interface ProjectListQuery {
   method: 'scrum' | 'waterfall' | undefined
   status: 'active' | 'paused' | 'archived' | undefined
   ownerId: string | undefined
-  scope: 'visible' | 'all' | undefined
   riskStatus: 'healthy' | 'attention' | 'risk' | undefined
   page: number
   pageSize: number
@@ -33,10 +32,6 @@ const isRiskStatus = (
 ): value is ProjectListQuery['riskStatus'] =>
   value === 'healthy' || value === 'attention' || value === 'risk'
 
-const isScope = (
-  value: string | null | undefined,
-): value is ProjectListQuery['scope'] => value === 'visible' || value === 'all'
-
 const toPositiveInt = (value: string | null | undefined, fallback: number) => {
   const parsed = Number(value)
 
@@ -48,7 +43,6 @@ export const parseProjectListQuery = (
 ): ProjectListQuery => {
   const method = first(query.method)
   const status = first(query.status)
-  const scope = first(query.scope)
   const riskStatus = first(query.risk_status)
   let ownerId = first(query.owner_id)?.trim()
   if (ownerId === '') {
@@ -61,7 +55,6 @@ export const parseProjectListQuery = (
     method: isMethod(method) ? method : undefined,
     status: isStatus(status) ? status : undefined,
     ownerId,
-    scope: isScope(scope) ? scope : undefined,
     riskStatus: isRiskStatus(riskStatus) ? riskStatus : undefined,
     page: toPositiveInt(first(query.page), 1),
     pageSize: toPositiveInt(first(query.page_size), 10),
@@ -74,7 +67,6 @@ export const serializeProjectListQuery = (query: ProjectListQuery) => ({
   ...(query.method ? { method: query.method } : {}),
   ...(query.status ? { status: query.status } : {}),
   ...(query.ownerId ? { owner_id: query.ownerId } : {}),
-  ...(query.scope ? { scope: query.scope } : {}),
   ...(query.riskStatus ? { risk_status: query.riskStatus } : {}),
   ...(query.page > 1 ? { page: String(query.page) } : {}),
   ...(query.pageSize !== 10 ? { page_size: String(query.pageSize) } : {}),
@@ -103,10 +95,6 @@ export const toProjectRequestParams = (
 
   if (query.ownerId) {
     params.owner_id = query.ownerId
-  }
-
-  if (query.scope) {
-    params.scope = query.scope
   }
 
   if (query.riskStatus) {

@@ -2,13 +2,20 @@
   <div class="work-item-editor" :class="`work-item-editor--${mode}`">
     <main class="work-item-editor__main">
       <template v-if="mode === 'create'">
-        <ElFormItem label="标题" required>
+        <ElFormItem v-if="showBodyTitle" label="标题" required>
           <ElInput
             :model-value="form.title"
             :placeholder="titlePlaceholder"
             @update:model-value="updateField('title', $event)"
           />
         </ElFormItem>
+        <header
+          v-if="kind === 'requirement'"
+          class="work-item-editor__section-header"
+        >
+          <h3>需求内容</h3>
+          <p>先完善需求描述，再补充可验收条件。</p>
+        </header>
         <ElFormItem label="描述" required class="work-item-editor__rich-field">
           <RichTextEditor
             :model-value="form.description"
@@ -62,7 +69,7 @@
       </template>
 
       <template v-else>
-        <div class="work-item-editor__title-row">
+        <div v-if="showBodyTitle" class="work-item-editor__title-row">
           <p class="eyebrow">{{ item?.number }}</p>
           <ElInput
             :model-value="form.title"
@@ -70,7 +77,7 @@
             @update:model-value="updateField('title', $event)"
           />
         </div>
-        <dl class="work-item-editor__meta">
+        <dl v-if="showBodyTitle" class="work-item-editor__meta">
           <div>
             <dt>负责人</dt>
             <dd>{{ item?.assignee?.display_name ?? '未分配' }}</dd>
@@ -94,10 +101,26 @@
           </div>
         </dl>
         <section class="work-item-editor__description">
-          <h3>描述</h3>
+          <header class="work-item-editor__section-header">
+            <h3>{{ descriptionTitle }}</h3>
+            <p>{{ descriptionHelp }}</p>
+          </header>
           <RichTextEditor
             :model-value="form.description"
             @update:model-value="updateField('description', $event)"
+          />
+        </section>
+        <section
+          v-if="kind === 'requirement'"
+          class="work-item-editor__description work-item-editor__description--secondary"
+        >
+          <header class="work-item-editor__section-header">
+            <h3>验收标准</h3>
+            <p>用于确认需求交付结果的可验收条件。</p>
+          </header>
+          <RichTextEditor
+            :model-value="form.acceptance"
+            @update:model-value="updateField('acceptance', $event)"
           />
         </section>
         <div class="work-item-editor__tabs">
@@ -109,185 +132,225 @@
     <aside class="work-item-editor__aside" aria-label="工作项属性">
       <h3>属性</h3>
       <ElForm label-position="top" class="work-item-editor__properties">
-        <ElFormItem label="优先级">
-          <AppSelect
-            :model-value="form.priority"
-            :options="priorityOptions"
-            @update:model-value="updateField('priority', $event)"
-          />
-        </ElFormItem>
-        <ElFormItem v-if="kind === 'defect'" label="严重程度">
-          <AppSelect
-            :model-value="form.severity"
-            :options="severityOptions"
-            @update:model-value="updateField('severity', $event)"
-          />
-        </ElFormItem>
-        <ElFormItem label="负责人" required>
-          <AppSelect
-            :model-value="form.assignee_id"
-            clearable
-            :options="memberOptions"
-            @update:model-value="updateField('assignee_id', $event)"
-          />
-        </ElFormItem>
-        <div class="work-item-editor__date-grid">
-          <ElFormItem label="计划开始">
-            <ElDatePicker
-              :model-value="form.start_at"
-              type="date"
-              value-format="YYYY-MM-DD"
-              placeholder="选择日期"
-              @update:model-value="updateField('start_at', $event)"
-            />
-          </ElFormItem>
-          <ElFormItem label="计划结束">
-            <ElDatePicker
-              :model-value="form.end_at"
-              type="date"
-              value-format="YYYY-MM-DD"
-              placeholder="选择日期"
-              @update:model-value="updateField('end_at', $event)"
-            />
-          </ElFormItem>
-        </div>
-
         <template v-if="kind === 'requirement'">
-          <ElFormItem label="需求来源">
-            <ElInput
-              :model-value="form.requirement_detail.source"
-              @update:model-value="
-                updateField('requirement_detail.source', $event)
-              "
-            />
-          </ElFormItem>
-          <ElFormItem label="业务价值">
-            <ElInput
-              :model-value="form.requirement_detail.business_value"
-              type="textarea"
-              :rows="4"
-              @update:model-value="
-                updateField('requirement_detail.business_value', $event)
-              "
-            />
-          </ElFormItem>
-        </template>
+          <section class="work-item-editor__group">
+            <h4>工作状态</h4>
+            <ElFormItem label="优先级">
+              <AppSelect
+                :model-value="form.priority"
+                :options="priorityOptions"
+                @update:model-value="updateField('priority', $event)"
+              />
+            </ElFormItem>
+            <ElFormItem label="负责人" required>
+              <AppSelect
+                :model-value="form.assignee_id"
+                clearable
+                :options="memberOptions"
+                @update:model-value="updateField('assignee_id', $event)"
+              />
+            </ElFormItem>
+          </section>
 
-        <template v-else-if="kind === 'task'">
-          <ElFormItem label="父需求">
-            <AppSelect
-              :model-value="form.parent_id"
-              clearable
-              :options="requirementOptions"
-              @update:model-value="updateField('parent_id', $event)"
-            />
-          </ElFormItem>
-          <ElFormItem label="分类">
-            <AppSelect
-              :model-value="form.task_detail.category"
-              :options="taskCategoryOptions"
-              @update:model-value="updateField('task_detail.category', $event)"
-            />
-          </ElFormItem>
-          <div class="work-item-editor__date-grid">
-            <ElFormItem label="预估工时">
+          <section class="work-item-editor__group">
+            <h4>计划信息</h4>
+            <div class="work-item-editor__date-grid">
+              <ElFormItem label="计划开始">
+                <ElDatePicker
+                  :model-value="form.start_at"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="选择日期"
+                  @update:model-value="updateField('start_at', $event)"
+                />
+              </ElFormItem>
+              <ElFormItem label="计划结束">
+                <ElDatePicker
+                  :model-value="form.end_at"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="选择日期"
+                  @update:model-value="updateField('end_at', $event)"
+                />
+              </ElFormItem>
+            </div>
+          </section>
+
+          <section class="work-item-editor__group">
+            <h4>业务信息</h4>
+            <ElFormItem label="需求来源">
               <ElInput
-                :model-value="form.estimated_hours"
+                :model-value="form.requirement_detail.source"
                 @update:model-value="
-                  updateField('estimated_hours', Number($event))
+                  updateField('requirement_detail.source', $event)
                 "
               />
             </ElFormItem>
-            <ElFormItem label="剩余工时">
+            <ElFormItem label="业务价值">
               <ElInput
-                :model-value="form.remaining_hours"
+                :model-value="form.requirement_detail.business_value"
+                type="textarea"
+                :rows="4"
                 @update:model-value="
-                  updateField('remaining_hours', Number($event))
+                  updateField('requirement_detail.business_value', $event)
                 "
               />
             </ElFormItem>
-          </div>
-          <ElFormItem label="代码评审">
-            <AppSelect
-              :model-value="form.task_detail.review_required"
-              :options="reviewOptions"
-              @update:model-value="
-                updateField('task_detail.review_required', $event)
-              "
-            />
-          </ElFormItem>
-          <ElFormItem v-if="mode === 'detail'" label="评审地址">
-            <ElInput
-              :model-value="form.task_detail.code_review_url"
-              @update:model-value="
-                updateField('task_detail.code_review_url', $event)
-              "
-            />
-          </ElFormItem>
-          <ElFormItem label="技术说明">
-            <ElInput
-              :model-value="form.task_detail.technical_notes"
-              type="textarea"
-              :rows="4"
-              @update:model-value="
-                updateField('task_detail.technical_notes', $event)
-              "
-            />
-          </ElFormItem>
+          </section>
         </template>
 
         <template v-else>
-          <ElFormItem label="关联需求/任务">
+          <ElFormItem label="优先级">
             <AppSelect
-              :model-value="form.parent_id"
-              clearable
-              :options="requirementOptions"
-              @update:model-value="updateField('parent_id', $event)"
+              :model-value="form.priority"
+              :options="priorityOptions"
+              @update:model-value="updateField('priority', $event)"
             />
           </ElFormItem>
-          <ElFormItem label="缺陷类型">
+          <ElFormItem v-if="kind === 'defect'" label="严重程度">
             <AppSelect
-              :model-value="form.bug_detail.bug_type"
+              :model-value="form.severity"
+              :options="severityOptions"
+              @update:model-value="updateField('severity', $event)"
+            />
+          </ElFormItem>
+          <ElFormItem label="负责人" required>
+            <AppSelect
+              :model-value="form.assignee_id"
               clearable
-              :options="bugTypeOptions"
-              @update:model-value="updateField('bug_detail.bug_type', $event)"
+              :options="memberOptions"
+              @update:model-value="updateField('assignee_id', $event)"
             />
           </ElFormItem>
-          <ElFormItem label="发现环境">
-            <ElInput
-              :model-value="form.bug_detail.environment"
-              @update:model-value="
-                updateField('bug_detail.environment', $event)
-              "
-            />
-          </ElFormItem>
-          <ElFormItem v-if="mode === 'detail'" label="修复说明">
-            <ElInput
-              :model-value="form.bug_detail.fix_summary"
-              type="textarea"
-              :rows="4"
-              @update:model-value="
-                updateField('bug_detail.fix_summary', $event)
-              "
-            />
-          </ElFormItem>
-          <ElFormItem v-if="mode === 'detail'" label="重开次数">
-            <ElInput :model-value="form.bug_detail.reopened_count" disabled />
-          </ElFormItem>
-        </template>
+          <div class="work-item-editor__date-grid">
+            <ElFormItem label="计划开始">
+              <ElDatePicker
+                :model-value="form.start_at"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="选择日期"
+                @update:model-value="updateField('start_at', $event)"
+              />
+            </ElFormItem>
+            <ElFormItem label="计划结束">
+              <ElDatePicker
+                :model-value="form.end_at"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="选择日期"
+                @update:model-value="updateField('end_at', $event)"
+              />
+            </ElFormItem>
+          </div>
 
-        <ElFormItem
-          v-if="mode === 'detail' && kind === 'requirement'"
-          label="验收标准"
-        >
-          <RichTextEditor
-            :model-value="form.acceptance"
-            @update:model-value="updateField('acceptance', $event)"
-          />
-        </ElFormItem>
+          <template v-if="kind === 'task'">
+            <ElFormItem label="父需求">
+              <AppSelect
+                :model-value="form.parent_id"
+                clearable
+                :options="requirementOptions"
+                @update:model-value="updateField('parent_id', $event)"
+              />
+            </ElFormItem>
+            <ElFormItem label="分类">
+              <AppSelect
+                :model-value="form.task_detail.category"
+                :options="taskCategoryOptions"
+                @update:model-value="
+                  updateField('task_detail.category', $event)
+                "
+              />
+            </ElFormItem>
+            <div class="work-item-editor__date-grid">
+              <ElFormItem label="预估工时">
+                <ElInput
+                  :model-value="form.estimated_hours"
+                  @update:model-value="
+                    updateField('estimated_hours', Number($event))
+                  "
+                />
+              </ElFormItem>
+              <ElFormItem label="剩余工时">
+                <ElInput
+                  :model-value="form.remaining_hours"
+                  @update:model-value="
+                    updateField('remaining_hours', Number($event))
+                  "
+                />
+              </ElFormItem>
+            </div>
+            <ElFormItem label="代码评审">
+              <AppSelect
+                :model-value="form.task_detail.review_required"
+                :options="reviewOptions"
+                @update:model-value="
+                  updateField('task_detail.review_required', $event)
+                "
+              />
+            </ElFormItem>
+            <ElFormItem v-if="mode === 'detail'" label="评审地址">
+              <ElInput
+                :model-value="form.task_detail.code_review_url"
+                @update:model-value="
+                  updateField('task_detail.code_review_url', $event)
+                "
+              />
+            </ElFormItem>
+            <ElFormItem label="技术说明">
+              <ElInput
+                :model-value="form.task_detail.technical_notes"
+                type="textarea"
+                :rows="4"
+                @update:model-value="
+                  updateField('task_detail.technical_notes', $event)
+                "
+              />
+            </ElFormItem>
+          </template>
+
+          <template v-else>
+            <ElFormItem label="关联需求/任务">
+              <AppSelect
+                :model-value="form.parent_id"
+                clearable
+                :options="requirementOptions"
+                @update:model-value="updateField('parent_id', $event)"
+              />
+            </ElFormItem>
+            <ElFormItem label="缺陷类型">
+              <AppSelect
+                :model-value="form.bug_detail.bug_type"
+                clearable
+                :options="bugTypeOptions"
+                @update:model-value="updateField('bug_detail.bug_type', $event)"
+              />
+            </ElFormItem>
+            <ElFormItem label="发现环境">
+              <ElInput
+                :model-value="form.bug_detail.environment"
+                @update:model-value="
+                  updateField('bug_detail.environment', $event)
+                "
+              />
+            </ElFormItem>
+            <ElFormItem v-if="mode === 'detail'" label="修复说明">
+              <ElInput
+                :model-value="form.bug_detail.fix_summary"
+                type="textarea"
+                :rows="4"
+                @update:model-value="
+                  updateField('bug_detail.fix_summary', $event)
+                "
+              />
+            </ElFormItem>
+            <ElFormItem v-if="mode === 'detail'" label="重开次数">
+              <ElInput :model-value="form.bug_detail.reopened_count" disabled />
+            </ElFormItem>
+          </template>
+        </template>
       </ElForm>
 
-      <div class="work-item-editor__actions">
+      <div v-if="showSidebarActions" class="work-item-editor__actions">
         <slot name="actions" />
       </div>
     </aside>
@@ -376,10 +439,14 @@ const props = withDefaults(
     members?: ProjectMember[]
     requirements?: WorkItemSummary[]
     item?: WorkItem
+    titlePlacement?: 'body' | 'header'
+    showSidebarActions?: boolean
   }>(),
   {
     members: () => [],
     requirements: () => [],
+    titlePlacement: 'body',
+    showSidebarActions: true,
   },
 )
 
@@ -456,13 +523,35 @@ const titlePlaceholder = computed(() => {
   }
   return '请输入需求标题'
 })
+
+const descriptionTitle = computed(() => {
+  if (props.kind === 'task') {
+    return '任务描述'
+  }
+  if (props.kind === 'defect') {
+    return '缺陷描述'
+  }
+  return '需求描述'
+})
+
+const descriptionHelp = computed(() => {
+  if (props.kind === 'task') {
+    return '维护任务目标、实现说明和交付边界。'
+  }
+  if (props.kind === 'defect') {
+    return '维护缺陷现象、影响范围和处理线索。'
+  }
+  return '维护需求背景、范围和实现约束。'
+})
+
+const showBodyTitle = computed(() => props.titlePlacement === 'body')
 </script>
 
 <style scoped>
 .work-item-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+  gap: 24px;
 }
 
 .work-item-editor__main,
@@ -470,30 +559,88 @@ const titlePlaceholder = computed(() => {
   min-width: 0;
 }
 
-.work-item-editor__aside {
-  padding: var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-subtle);
+.work-item-editor__main {
+  display: grid;
+  gap: 24px;
+  padding: 20px;
+  background: var(--color-bg-surface);
+  border: 1px solid rgba(40, 70, 100, 0.12);
+  border-radius: 8px;
 }
 
-.work-item-editor__aside > h3,
-.work-item-editor__description > h3 {
-  margin: 0 0 var(--space-2);
+.work-item-editor__aside {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+  max-height: calc(100vh - 120px);
+  padding: 18px;
+  overflow: auto;
+  background: var(--color-bg-surface);
+  border: 1px solid rgba(40, 70, 100, 0.12);
+  border-radius: 8px;
+}
+
+.work-item-editor__aside > h3 {
+  margin: 0 0 18px;
   font-size: var(--font-size-title-sm);
 }
 
 .work-item-editor__properties {
   display: grid;
-  gap: var(--space-1);
+  gap: 24px;
+}
+
+.work-item-editor__group {
+  display: grid;
+  gap: 14px;
+}
+
+.work-item-editor__group h4,
+.work-item-editor__section-header h3,
+.work-item-editor__section-header p {
+  margin: 0;
+}
+
+.work-item-editor__group h4 {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0;
+}
+
+.work-item-editor__section-header {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.work-item-editor__section-header h3 {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-title-sm);
+}
+
+.work-item-editor__section-header p {
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 .work-item-editor__properties :deep(.el-form-item) {
   margin-bottom: 0;
 }
 
+.work-item-editor__main :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.work-item-editor__main :deep(.el-form-item__content) {
+  width: 100%;
+  min-width: 0;
+}
+
 .work-item-editor__properties :deep(.el-select),
-.work-item-editor__properties :deep(.el-date-editor) {
+.work-item-editor__properties :deep(.el-date-editor),
+.work-item-editor__properties :deep(.el-input),
+.work-item-editor__main :deep(.el-input) {
   width: 100%;
 }
 
@@ -505,7 +652,16 @@ const titlePlaceholder = computed(() => {
 
 .work-item-editor__rich-field :deep(.rich-text-editor),
 .work-item-editor__description :deep(.rich-text-editor) {
-  min-height: 260px;
+  width: 100%;
+}
+
+.work-item-editor__rich-field :deep(.rich-text-editor__content),
+.work-item-editor__description :deep(.rich-text-editor__content) {
+  min-height: 220px;
+}
+
+.work-item-editor__description--secondary :deep(.rich-text-editor__content) {
+  min-height: 150px;
 }
 
 .work-item-editor__title-row {
@@ -550,11 +706,41 @@ const titlePlaceholder = computed(() => {
 }
 
 .work-item-editor__description {
-  margin-bottom: var(--space-3);
+  min-width: 0;
 }
 
 .work-item-editor__tabs {
   min-width: 0;
+  padding-top: 4px;
+}
+
+.work-item-editor__tabs :deep(.el-tabs__header) {
+  position: sticky;
+  top: 96px;
+  z-index: 4;
+  height: 48px;
+  margin: 0 0 16px;
+  background: var(--color-bg-surface);
+}
+
+.work-item-editor__tabs :deep(.el-tabs__nav-wrap::after) {
+  height: 1px;
+  background: rgba(40, 70, 100, 0.12);
+}
+
+.work-item-editor__tabs :deep(.el-tabs__item) {
+  height: 48px;
+  padding: 0 14px;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.work-item-editor__tabs :deep(.el-tabs__item.is-active) {
+  color: var(--color-primary);
+}
+
+.work-item-editor__tabs :deep(.el-tabs__active-bar) {
+  height: 2px;
 }
 
 .work-item-editor__actions {
@@ -567,6 +753,11 @@ const titlePlaceholder = computed(() => {
 @media (max-width: 1100px) {
   .work-item-editor {
     grid-template-columns: 1fr;
+  }
+
+  .work-item-editor__aside {
+    position: static;
+    max-height: none;
   }
 
   .work-item-editor__meta {

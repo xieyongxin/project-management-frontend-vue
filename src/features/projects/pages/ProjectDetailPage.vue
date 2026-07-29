@@ -8,9 +8,8 @@
       @retry="() => navigationQuery.refetch()"
     />
     <template v-else-if="navigation">
-      <header class="project-detail-header">
+      <header v-if="!isWorkItemEditorPage" class="project-detail-header">
         <div>
-          <p class="project-detail-header__breadcrumb">项目管理 / 项目详情</p>
           <h1>{{ navigation.project.name }}</h1>
           <div class="project-detail-header__meta">
             <StatusTag
@@ -41,7 +40,11 @@
         </div>
       </header>
 
-      <nav class="project-tabs" aria-label="项目导航">
+      <nav
+        v-if="!isWorkItemEditorPage"
+        class="project-tabs"
+        aria-label="项目导航"
+      >
         <RouterLink
           v-for="tab in navigation.tabs"
           :key="tab.tab_key"
@@ -80,22 +83,22 @@
       </nav>
 
       <main class="project-detail-content">
-        <section v-if="createKind" class="project-detail-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">{{ createPanelEyebrow }}</p>
-              <h2>{{ createPanelTitle }}</h2>
-            </div>
-            <EButton @click="cancelCreateWorkItem">返回列表</EButton>
-          </div>
-          <WorkItemEditor
-            mode="create"
-            :kind="createKind"
-            :form="workItemForm"
-            :members="membersQuery.data.value ?? []"
-            :requirements="createParentOptions"
-            @update-field="updateWorkItemFormField"
+        <section v-if="createKind" class="requirement-editor-shell">
+          <RequirementObjectHeader
+            :model-value="workItemForm.title"
+            :placeholder="createTitlePlaceholder"
+            :kind-label="workItemCreateKindLabel"
+            context="新建工作项"
+            status="未保存"
+            :priority="priorityDisplayLabel(workItemForm.priority)"
+            :priority-tone="priorityToneValue(workItemForm.priority)"
+            @update:model-value="updateWorkItemFormField('title', $event)"
           >
+            <template #back>
+              <EButton link type="primary" @click="cancelCreateWorkItem">
+                ← 返回{{ workItemCreateKindLabel }}列表
+              </EButton>
+            </template>
             <template #actions>
               <EButton @click="cancelCreateWorkItem">取消</EButton>
               <EButton
@@ -106,7 +109,18 @@
                 创建
               </EButton>
             </template>
-          </WorkItemEditor>
+          </RequirementObjectHeader>
+          <RequirementSummaryBar :items="createWorkItemSummaryItems" />
+          <WorkItemEditor
+            mode="create"
+            :kind="createKind"
+            title-placement="header"
+            :show-sidebar-actions="false"
+            :form="workItemForm"
+            :members="membersQuery.data.value ?? []"
+            :requirements="createParentOptions"
+            @update-field="updateWorkItemFormField"
+          />
         </section>
 
         <WorkItemDetailPanel v-else-if="workItemId" />
@@ -117,7 +131,7 @@
         >
           <SummaryCard
             label="项目健康度"
-            :value="overview?.health ?? '--'"
+            :value="overviewHealthLabel"
             description="后端根据进度、测试和缺陷统计"
             tone="success"
           />
@@ -285,7 +299,6 @@ import {
 } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
-  AppButton,
   AsyncPageSkeleton,
   EmptyState,
   PageError,
@@ -302,6 +315,8 @@ import type {
   WorkItemSummary,
 } from '../model/project-detail.types'
 import RichTextEditor from '../components/RichTextEditor.vue'
+import RequirementObjectHeader from '../components/RequirementObjectHeader.vue'
+import RequirementSummaryBar from '../components/RequirementSummaryBar.vue'
 import WorkItemEditor from '../components/WorkItemEditor.vue'
 import type {
   WorkItemEditorField,
@@ -356,6 +371,9 @@ const createKind = computed<WorkItemCreateMode | ''>(() => {
   }
   return ''
 })
+const isWorkItemEditorPage = computed(() =>
+  Boolean(createKind.value || workItemId.value),
+)
 
 const navigationQuery = useProjectNavigation(projectId)
 const overviewQuery = useProjectOverview(projectId)
@@ -407,6 +425,76 @@ const membersQuery = useQuery({
   enabled: computed(() => Boolean(projectId.value)),
 })
 
+const priorityText: Record<string, string> = {
+  high: '高',
+  medium: '中',
+  low: '低',
+}
+
+const priorityTone: Record<string, 'high' | 'medium' | 'low'> = {
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+}
+
+const prioritySummaryTone: Record<
+  string,
+  'primary' | 'success' | 'warning' | 'danger' | 'neutral'
+> = {
+  high: 'danger',
+  medium: 'warning',
+  low: 'success',
+}
+
+const priorityDisplayLabel = (priority?: string) =>
+  priority ? (priorityText[priority] ?? priority) : '-'
+
+const priorityToneValue = (priority?: string) =>
+  priority ? (priorityTone[priority] ?? 'medium') : 'medium'
+
+const prioritySummaryToneValue = (priority?: string) =>
+  priority ? (prioritySummaryTone[priority] ?? 'neutral') : 'neutral'
+
+function workItemKindLabel(kind: WorkItemCreateMode | '' | WorkItem['type']) {
+  if (kind === 'task') {
+    return '任务'
+  }
+  if (kind === 'defect' || kind === 'bug') {
+    return '缺陷'
+  }
+  return '需求'
+}
+
+const formatPlanRange = (startAt?: string, endAt?: string) => {
+  if (startAt && endAt) {
+    return `${startAt} ～ ${endAt}`
+  }
+  if (startAt) {
+    return startAt
+  }
+  if (endAt) {
+    return endAt
+  }
+  return '-'
+}
+
+const formatHours = (hours?: number) => {
+  if (!hours || hours <= 0) {
+    return '-'
+  }
+  return `${hours} 小时`
+}
+
+const resolveMemberName = (userId?: string) => {
+  if (!userId) {
+    return '未分配'
+  }
+  return (
+    membersQuery.data.value?.find((member: any) => member.user.id === userId)
+      ?.user.display_name ?? '未分配'
+  )
+}
+
 const requirementOptionsQuery = useQuery({
   queryKey: computed(() => [
     'projects',
@@ -433,23 +521,18 @@ const taskOptionsQuery = useQuery({
 })
 
 const createMode = ref<WorkItemCreateMode>('requirement')
-const createPanelTitle = computed(() => {
-  if (createKind.value === 'task') {
-    return '创建任务'
+const workItemCreateKindLabel = computed(() =>
+  workItemKindLabel(createKind.value),
+)
+const createTitlePlaceholder = computed(
+  () => `请输入${workItemCreateKindLabel.value}标题`,
+)
+const overviewHealthLabel = computed(() => {
+  const health = overview.value?.health
+  if (!health) {
+    return '--'
   }
-  if (createKind.value === 'defect') {
-    return '创建缺陷'
-  }
-  return '创建需求'
-})
-const createPanelEyebrow = computed(() => {
-  if (createKind.value === 'task') {
-    return '项目工作项 / 任务'
-  }
-  if (createKind.value === 'defect') {
-    return '项目工作项 / 缺陷'
-  }
-  return '项目工作项 / 需求'
+  return healthLabel[health as keyof typeof healthLabel] ?? health
 })
 const createParentOptions = computed(() => {
   if (createKind.value === 'defect') {
@@ -533,6 +616,31 @@ const workItemForm = reactive<WorkItemForm>({
     reopened_count: 0,
   },
 })
+
+const createWorkItemSummaryItems = computed(() => [
+  {
+    label: '负责人',
+    value: resolveMemberName(workItemForm.assignee_id),
+  },
+  {
+    label: '状态',
+    value: '未保存',
+    tone: 'neutral' as const,
+  },
+  {
+    label: '优先级',
+    value: priorityDisplayLabel(workItemForm.priority),
+    tone: prioritySummaryToneValue(workItemForm.priority),
+  },
+  {
+    label: '计划时间',
+    value: formatPlanRange(workItemForm.start_at, workItemForm.end_at),
+  },
+  {
+    label: '预计工作量',
+    value: formatHours(workItemForm.estimated_hours),
+  },
+])
 
 const createWorkItemMutation = useMutation({
   mutationFn: (payload: WorkItemCreatePayload) =>
@@ -968,21 +1076,22 @@ const WorkItemListPanel = defineComponent({
       ]
     })
     return () =>
-      h('section', { class: 'project-detail-panel' }, [
-        h('div', { class: 'panel-heading' }, [
+      h('section', { class: 'project-detail-panel work-item-list-panel' }, [
+        h('div', { class: 'work-item-list-panel__toolbar' }, [
           h('h2', title.value),
-          h('div', { class: 'panel-actions' }, [
+          h('div', { class: 'work-item-list-panel__filters' }, [
             h(EInput, {
               modelValue: keyword.value,
               'onUpdate:modelValue': (v: string) => (keyword.value = v),
-              placeholder: 'Search',
+              placeholder: '搜索编号、标题',
+              clearable: true,
             }),
             h(
               ESelect,
               {
                 modelValue: status.value,
                 'onUpdate:modelValue': (v: string) => (status.value = v),
-                placeholder: 'Status',
+                placeholder: '状态',
                 clearable: true,
               },
               () =>
@@ -995,122 +1104,159 @@ const WorkItemListPanel = defineComponent({
             ),
           ]),
         ]),
-        h(
-          ETable,
-          {
-            data: query.data.value?.data ?? [],
-            stripe: true,
-            onRowClick: (row: WorkItemSummary) =>
-              router.push(`/projects/${projectId.value}/work-items/${row.id}`),
-          },
-          () => [
-            h(ETableColumn, { prop: 'number', label: 'Number', width: 160 }),
-            h(ETableColumn, { prop: 'title', label: 'Title', minWidth: 260 }),
-            h(
-              ETableColumn,
-              { label: 'Status', width: 140 },
-              {
-                default: ({ row }: any) =>
-                  h(
-                    ETag,
-                    { color: row.status_color, effect: 'dark' },
-                    () => row.status_name,
-                  ),
-              },
-            ),
-            h(ETableColumn, {
-              prop: 'priority',
-              label: 'Priority',
-              width: 100,
-            }),
-            h(
-              ETableColumn,
-              { label: '负责人', width: 140 },
-              { default: ({ row }: any) => row.assignee?.display_name ?? '-' },
-            ),
-            props.kind === 'defects'
-              ? h(ETableColumn, {
-                  prop: 'severity',
-                  label: '严重程度',
-                  width: 120,
-                })
-              : null,
-            props.kind === 'tasks'
-              ? h(
-                  ETableColumn,
-                  { label: '父需求', minWidth: 220 },
-                  {
-                    default: ({ row }: any) =>
-                      row.parent
-                        ? `${row.parent.number} ${row.parent.title}`
-                        : '独立任务',
-                  },
-                )
-              : props.kind === 'defects'
+        h('div', { class: 'work-item-list-panel__table-wrap' }, [
+          h(
+            ETable,
+            {
+              data: query.data.value?.data ?? [],
+              stripe: true,
+              fit: true,
+              onRowClick: (row: WorkItemSummary) =>
+                router.push(
+                  `/projects/${projectId.value}/work-items/${row.id}`,
+                ),
+            },
+            () => [
+              h(ETableColumn, {
+                prop: 'number',
+                label: '编号',
+                width: 140,
+                showOverflowTooltip: true,
+              }),
+              h(ETableColumn, {
+                prop: 'title',
+                label: '标题',
+                minWidth: 220,
+                showOverflowTooltip: true,
+              }),
+              h(
+                ETableColumn,
+                { label: '状态', width: 120 },
+                {
+                  default: ({ row }: any) =>
+                    h(
+                      ETag,
+                      { color: row.status_color, effect: 'dark' },
+                      () => row.status_name,
+                    ),
+                },
+              ),
+              h(ETableColumn, {
+                prop: 'priority',
+                label: '优先级',
+                width: 86,
+                showOverflowTooltip: true,
+              }),
+              h(
+                ETableColumn,
+                { label: '负责人', width: 116, showOverflowTooltip: true },
+                {
+                  default: ({ row }: any) => row.assignee?.display_name ?? '-',
+                },
+              ),
+              props.kind === 'defects'
+                ? h(ETableColumn, {
+                    prop: 'severity',
+                    label: '严重程度',
+                    width: 108,
+                    showOverflowTooltip: true,
+                  })
+                : null,
+              props.kind === 'tasks'
                 ? h(
                     ETableColumn,
-                    { label: '关联项', minWidth: 220 },
+                    {
+                      label: '父需求',
+                      minWidth: 180,
+                      showOverflowTooltip: true,
+                    },
                     {
                       default: ({ row }: any) =>
                         row.parent
                           ? `${row.parent.number} ${row.parent.title}`
-                          : '未关联',
+                          : '独立任务',
                     },
                   )
-                : h(
+                : props.kind === 'defects'
+                  ? h(
+                      ETableColumn,
+                      {
+                        label: '关联项',
+                        minWidth: 180,
+                        showOverflowTooltip: true,
+                      },
+                      {
+                        default: ({ row }: any) =>
+                          row.parent
+                            ? `${row.parent.number} ${row.parent.title}`
+                            : '未关联',
+                      },
+                    )
+                  : h(
+                      ETableColumn,
+                      { label: '验收', width: 100, showOverflowTooltip: true },
+                      {
+                        default: ({ row }: any) =>
+                          acceptanceStatusLabel[row.acceptance_status] ?? '-',
+                      },
+                    ),
+              props.kind === 'tasks'
+                ? h(ETableColumn, {
+                    prop: 'remaining_hours',
+                    label: '剩余工时',
+                    width: 104,
+                  })
+                : null,
+              props.kind === 'tasks'
+                ? h(
                     ETableColumn,
-                    { label: '验收', width: 120 },
+                    {
+                      label: '代码评审',
+                      width: 104,
+                      showOverflowTooltip: true,
+                    },
                     {
                       default: ({ row }: any) =>
-                        acceptanceStatusLabel[row.acceptance_status] ?? '-',
+                        row.task_detail?.review_required
+                          ? row.task_detail?.code_review_url
+                            ? '已关联'
+                            : '需要'
+                          : '不需要',
                     },
-                  ),
-            props.kind === 'tasks'
-              ? h(ETableColumn, {
-                  prop: 'remaining_hours',
-                  label: '剩余工时',
-                  width: 120,
-                })
-              : null,
-            props.kind === 'tasks'
-              ? h(
-                  ETableColumn,
-                  { label: '代码评审', width: 120 },
-                  {
-                    default: ({ row }: any) =>
-                      row.task_detail?.review_required
-                        ? row.task_detail?.code_review_url
-                          ? '已关联'
-                          : '需要'
-                        : '不需要',
-                  },
-                )
-              : null,
-            props.kind === 'defects'
-              ? h(
-                  ETableColumn,
-                  { label: '缺陷类型', width: 140 },
-                  {
-                    default: ({ row }: any) => {
-                      const bugType = row.bug_detail?.bug_type as
-                        string | undefined
-                      return bugType?.trim() ? bugType : '未分类'
+                  )
+                : null,
+              props.kind === 'defects'
+                ? h(
+                    ETableColumn,
+                    {
+                      label: '缺陷类型',
+                      width: 112,
+                      showOverflowTooltip: true,
                     },
-                  },
-                )
-              : null,
-            h(ETableColumn, {
-              prop: 'end_at',
-              label: '计划结束',
-              width: 180,
-            }),
-            h(ETableColumn, {
-              prop: 'updated_at',
-              label: '更新时间',
-              width: 160,
-            }),
-          ],
-        ),
+                    {
+                      default: ({ row }: any) => {
+                        const bugType = row.bug_detail?.bug_type as
+                          string | undefined
+                        return bugType?.trim() ? bugType : '未分类'
+                      },
+                    },
+                  )
+                : null,
+              h(ETableColumn, {
+                prop: 'end_at',
+                label: '计划结束',
+                width: 128,
+                showOverflowTooltip: true,
+              }),
+              h(ETableColumn, {
+                prop: 'updated_at',
+                label: '更新时间',
+                width: 144,
+                showOverflowTooltip: true,
+              }),
+            ],
+          ),
+        ]),
       ])
   },
 })
@@ -1300,283 +1446,368 @@ const WorkItemDetailPanel = defineComponent({
     return () => {
       const item = query.data.value
       if (!item) return h(AsyncPageSkeleton)
-      return h('section', { class: 'project-detail-panel' }, [
-        h('div', { class: 'panel-heading' }, [
-          h('div', [
-            h('p', { class: 'eyebrow' }, item.number),
-            h('h2', item.title),
-          ]),
+      return h(
+        'section',
+        {
+          class: 'requirement-editor-shell',
+        },
+        [
           h(
-            AppButton,
+            RequirementObjectHeader,
             {
-              plain: true,
-              onClick: () =>
-                router.push(`/projects/${projectId.value}/${section.value}`),
+              modelValue: draft.title,
+              'onUpdate:modelValue': (value: string) =>
+                updateFormField(draft, 'title', value),
+              number: item.number,
+              kindLabel: workItemKindLabel(item.type),
+              context: item.parent
+                ? `${item.parent.number} ${item.parent.title}`
+                : '项目工作项',
+              status: item.status_name,
+              statusColor: item.status_color,
+              priority: priorityDisplayLabel(draft.priority),
+              priorityTone: priorityToneValue(draft.priority),
+              createdBy:
+                item.created_by?.display_name ?? item.reporter.display_name,
+              createdAt: item.created_at,
+              updatedAt: item.updated_at,
             },
-            () => 'Back',
-          ),
-        ]),
-        h(
-          WorkItemEditor,
-          {
-            mode: 'detail',
-            kind:
-              item.type === 'task'
-                ? 'task'
-                : item.type === 'bug'
-                  ? 'defect'
-                  : 'requirement',
-            form: draft,
-            members: membersQuery.data.value ?? [],
-            requirements:
-              item.type === 'bug'
-                ? detailParentOptions.value
-                : (requirementOptionsQuery.data.value?.data ?? []),
-            item,
-            onUpdateField: (field: WorkItemEditorField, value: unknown) =>
-              updateFormField(draft, field, value),
-          },
-          {
-            actions: () =>
-              h(
-                EButton,
-                {
-                  type: 'primary',
-                  loading: saveMutation.isPending.value,
-                  onClick: () => saveMutation.mutate(item),
-                },
-                () => '保存',
-              ),
-            tabs: () => [
-              h('div', { class: 'transition-bar' }, [
-                h(EInput, {
-                  modelValue: transitionComment.value,
-                  'onUpdate:modelValue': (v: string) =>
-                    (transitionComment.value = v),
-                  placeholder: '填写流转备注',
-                }),
-                ...item.available_transitions.map((transition) =>
-                  h(
-                    EButton,
-                    {
-                      type: 'primary',
-                      onClick: () =>
-                        transitionMutation.mutate({
-                          item,
-                          key: transition.transition_key,
-                        }),
-                    },
-                    () => transition.name,
-                  ),
-                ),
-              ]),
-              h(
-                ETabs,
-                {
-                  modelValue: activeTab.value,
-                  'onUpdate:modelValue': (v: string) => (activeTab.value = v),
-                },
-                () => [
-                  h(ETabPane, { label: '评论', name: 'comments' }, () => [
-                    h(
-                      'div',
-                      { class: 'comment-list' },
-                      item.comments.map((entry) =>
-                        h('article', { class: 'comment-item' }, [
-                          h('strong', entry.author.display_name),
-                          h('span', entry.created_at),
-                          h('div', { innerHTML: entry.content }),
-                        ]),
+            {
+              back: () =>
+                h(
+                  EButton,
+                  {
+                    link: true,
+                    type: 'primary',
+                    onClick: () =>
+                      router.push(
+                        `/projects/${projectId.value}/${section.value}`,
                       ),
-                    ),
-                    h(RichTextEditor, {
-                      modelValue: comment.value,
-                      'onUpdate:modelValue': (v: string) => (comment.value = v),
-                    }),
+                  },
+                  () => `← 返回${workItemKindLabel(item.type)}列表`,
+                ),
+              actions: () => [
+                h(
+                  EButton,
+                  {
+                    onClick: () =>
+                      router.push(
+                        `/projects/${projectId.value}/${section.value}`,
+                      ),
+                  },
+                  () => '取消',
+                ),
+                h(
+                  EButton,
+                  {
+                    type: 'primary',
+                    loading: saveMutation.isPending.value,
+                    onClick: () => saveMutation.mutate(item),
+                  },
+                  () => '保存',
+                ),
+              ],
+            },
+          ),
+          h(RequirementSummaryBar, {
+            items: [
+              {
+                label: '负责人',
+                value: resolveMemberName(draft.assignee_id),
+              },
+              {
+                label: '状态',
+                value: item.status_name,
+                tone: 'primary',
+              },
+              {
+                label: '优先级',
+                value: priorityDisplayLabel(draft.priority),
+                tone: prioritySummaryToneValue(draft.priority),
+              },
+              {
+                label: '计划时间',
+                value: formatPlanRange(draft.start_at, draft.end_at),
+              },
+              {
+                label: '预计工作量',
+                value: formatHours(draft.estimated_hours),
+              },
+            ],
+          }),
+          h(
+            WorkItemEditor,
+            {
+              mode: 'detail',
+              kind:
+                item.type === 'task'
+                  ? 'task'
+                  : item.type === 'bug'
+                    ? 'defect'
+                    : 'requirement',
+              titlePlacement: 'header',
+              showSidebarActions: false,
+              form: draft,
+              members: membersQuery.data.value ?? [],
+              requirements:
+                item.type === 'bug'
+                  ? detailParentOptions.value
+                  : (requirementOptionsQuery.data.value?.data ?? []),
+              item,
+              onUpdateField: (field: WorkItemEditorField, value: unknown) =>
+                updateFormField(draft, field, value),
+            },
+            {
+              actions: () =>
+                h(
+                  EButton,
+                  {
+                    type: 'primary',
+                    loading: saveMutation.isPending.value,
+                    onClick: () => saveMutation.mutate(item),
+                  },
+                  () => '保存',
+                ),
+              tabs: () => [
+                h('div', { class: 'transition-bar' }, [
+                  h(EInput, {
+                    modelValue: transitionComment.value,
+                    'onUpdate:modelValue': (v: string) =>
+                      (transitionComment.value = v),
+                    placeholder: '填写流转备注',
+                  }),
+                  ...item.available_transitions.map((transition) =>
                     h(
                       EButton,
                       {
                         type: 'primary',
-                        onClick: () => commentMutation.mutate(item),
+                        onClick: () =>
+                          transitionMutation.mutate({
+                            item,
+                            key: transition.transition_key,
+                          }),
                       },
-                      () => '发表评论',
+                      () => transition.name,
                     ),
-                  ]),
-                  item.type === 'story'
-                    ? h(ETabPane, { label: '验收', name: 'acceptance' }, () => [
-                        h('div', { class: 'detail-summary' }, [
-                          h(
-                            'span',
-                            `当前状态：${
-                              acceptanceStatusLabel[
-                                item.requirement_detail?.acceptance_status ??
-                                  item.acceptance_status
-                              ] ?? '-'
-                            }`,
-                          ),
-                          h(
-                            'span',
-                            `验收人：${
-                              item.requirement_detail?.accepted_by
-                                ?.display_name ?? '-'
-                            }`,
-                          ),
-                          h(
-                            'span',
-                            `验收时间：${
-                              item.requirement_detail?.accepted_at ?? '-'
-                            }`,
-                          ),
-                        ]),
-                        item.requirement_detail?.rejected_reason
-                          ? h(
-                              'p',
-                              `拒绝原因：${
-                                item.requirement_detail.rejected_reason
-                              }`,
-                            )
-                          : null,
-                        h(EInput, {
-                          modelValue: acceptanceComment.value,
-                          'onUpdate:modelValue': (v: string) =>
-                            (acceptanceComment.value = v),
-                          type: 'textarea',
-                          rows: 3,
-                          placeholder: '填写验收意见；拒绝时必填',
-                        }),
-                        item.status === 'accepting'
-                          ? h('div', { class: 'inline-form' }, [
-                              h(
-                                EButton,
-                                {
-                                  type: 'primary',
-                                  loading: acceptanceMutation.isPending.value,
-                                  onClick: () =>
-                                    submitAcceptance(item, 'accepted'),
-                                },
-                                () => '验收通过',
-                              ),
-                              h(
-                                EButton,
-                                {
-                                  type: 'danger',
-                                  loading: acceptanceMutation.isPending.value,
-                                  onClick: () =>
-                                    submitAcceptance(item, 'rejected'),
-                                },
-                                () => '验收拒绝',
-                              ),
-                            ])
-                          : null,
-                        h(
-                          ETable,
-                          { data: item.requirement_acceptances },
-                          () => [
-                            h(ETableColumn, {
-                              label: '结果',
-                              width: 120,
-                              prop: 'status',
-                            }),
-                            h(ETableColumn, {
-                              label: '意见',
-                              prop: 'comment',
-                              minWidth: 220,
-                            }),
-                            h(ETableColumn, {
-                              label: '处理人',
-                              width: 140,
-                              prop: 'accepted_by.display_name',
-                            }),
-                            h(ETableColumn, {
-                              label: '时间',
-                              width: 180,
-                              prop: 'accepted_at',
-                            }),
-                          ],
-                        ),
-                      ])
-                    : null,
-                  h(ETabPane, { label: '开发', name: 'dev' }, () => [
-                    h(ETable, { data: item.dev_records }, () => [
-                      h(ETableColumn, {
-                        prop: 'record_type',
-                        label: '类型',
-                        width: 120,
-                      }),
-                      h(ETableColumn, { prop: 'title', label: '标题' }),
-                      h(ETableColumn, {
-                        prop: 'status',
-                        label: '状态',
-                        width: 120,
-                      }),
-                      h(ETableColumn, { prop: 'summary', label: '摘要' }),
-                    ]),
-                    h('div', { class: 'inline-form' }, [
+                  ),
+                ]),
+                h(
+                  ETabs,
+                  {
+                    modelValue: activeTab.value,
+                    'onUpdate:modelValue': (v: string) => (activeTab.value = v),
+                  },
+                  () => [
+                    h(ETabPane, { label: '评论', name: 'comments' }, () => [
                       h(
-                        ESelect,
-                        {
-                          modelValue: devRecord.record_type,
-                          'onUpdate:modelValue': (v: string) =>
-                            (devRecord.record_type = v),
-                        },
-                        () => [
-                          h(EOption, { label: 'Branch', value: 'branch' }),
-                          h(EOption, { label: 'Commit', value: 'commit' }),
-                          h(EOption, { label: 'PR', value: 'pull_request' }),
-                          h(EOption, { label: 'CI', value: 'ci' }),
-                        ],
+                        'div',
+                        { class: 'comment-list' },
+                        item.comments.map((entry) =>
+                          h('article', { class: 'comment-item' }, [
+                            h('strong', entry.author.display_name),
+                            h('span', entry.created_at),
+                            h('div', { innerHTML: entry.content }),
+                          ]),
+                        ),
                       ),
-                      h(EInput, {
-                        modelValue: devRecord.title,
+                      h(RichTextEditor, {
+                        modelValue: comment.value,
                         'onUpdate:modelValue': (v: string) =>
-                          (devRecord.title = v),
-                        placeholder: '标题',
+                          (comment.value = v),
                       }),
                       h(
                         EButton,
                         {
                           type: 'primary',
-                          onClick: () => devMutation.mutate(item),
+                          onClick: () => commentMutation.mutate(item),
                         },
-                        () => '添加',
+                        () => '发表评论',
                       ),
                     ]),
-                  ]),
-                  h(ETabPane, { label: '测试', name: 'tests' }, () =>
-                    h(ETable, { data: item.test_runs }, () => [
-                      h(ETableColumn, { prop: 'title', label: '执行' }),
-                      h(ETableColumn, {
-                        prop: 'status',
-                        label: '状态',
-                        width: 120,
-                      }),
-                      h(
-                        ETableColumn,
-                        { label: '执行人', width: 140 },
-                        {
-                          default: ({ row }: any) =>
-                            row.executor?.display_name ?? '-',
-                        },
-                      ),
-                    ]),
-                  ),
-                  h(ETabPane, { label: '历史', name: 'history' }, () =>
-                    h(ETimeline, () =>
-                      item.history.map((entry) =>
+                    item.type === 'story'
+                      ? h(
+                          ETabPane,
+                          { label: '验收', name: 'acceptance' },
+                          () => [
+                            h('div', { class: 'detail-summary' }, [
+                              h(
+                                'span',
+                                `当前状态：${
+                                  acceptanceStatusLabel[
+                                    item.requirement_detail
+                                      ?.acceptance_status ??
+                                      item.acceptance_status
+                                  ] ?? '-'
+                                }`,
+                              ),
+                              h(
+                                'span',
+                                `验收人：${
+                                  item.requirement_detail?.accepted_by
+                                    ?.display_name ?? '-'
+                                }`,
+                              ),
+                              h(
+                                'span',
+                                `验收时间：${
+                                  item.requirement_detail?.accepted_at ?? '-'
+                                }`,
+                              ),
+                            ]),
+                            item.requirement_detail?.rejected_reason
+                              ? h(
+                                  'p',
+                                  `拒绝原因：${
+                                    item.requirement_detail.rejected_reason
+                                  }`,
+                                )
+                              : null,
+                            h(EInput, {
+                              modelValue: acceptanceComment.value,
+                              'onUpdate:modelValue': (v: string) =>
+                                (acceptanceComment.value = v),
+                              type: 'textarea',
+                              rows: 3,
+                              placeholder: '填写验收意见；拒绝时必填',
+                            }),
+                            item.status === 'accepting'
+                              ? h('div', { class: 'inline-form' }, [
+                                  h(
+                                    EButton,
+                                    {
+                                      type: 'primary',
+                                      loading:
+                                        acceptanceMutation.isPending.value,
+                                      onClick: () =>
+                                        submitAcceptance(item, 'accepted'),
+                                    },
+                                    () => '验收通过',
+                                  ),
+                                  h(
+                                    EButton,
+                                    {
+                                      type: 'danger',
+                                      loading:
+                                        acceptanceMutation.isPending.value,
+                                      onClick: () =>
+                                        submitAcceptance(item, 'rejected'),
+                                    },
+                                    () => '验收拒绝',
+                                  ),
+                                ])
+                              : null,
+                            h(
+                              ETable,
+                              { data: item.requirement_acceptances },
+                              () => [
+                                h(ETableColumn, {
+                                  label: '结果',
+                                  width: 120,
+                                  prop: 'status',
+                                }),
+                                h(ETableColumn, {
+                                  label: '意见',
+                                  prop: 'comment',
+                                  minWidth: 220,
+                                }),
+                                h(ETableColumn, {
+                                  label: '处理人',
+                                  width: 140,
+                                  prop: 'accepted_by.display_name',
+                                }),
+                                h(ETableColumn, {
+                                  label: '时间',
+                                  width: 180,
+                                  prop: 'accepted_at',
+                                }),
+                              ],
+                            ),
+                          ],
+                        )
+                      : null,
+                    h(ETabPane, { label: '开发', name: 'dev' }, () => [
+                      h(ETable, { data: item.dev_records }, () => [
+                        h(ETableColumn, {
+                          prop: 'record_type',
+                          label: '类型',
+                          width: 120,
+                        }),
+                        h(ETableColumn, { prop: 'title', label: '标题' }),
+                        h(ETableColumn, {
+                          prop: 'status',
+                          label: '状态',
+                          width: 120,
+                        }),
+                        h(ETableColumn, { prop: 'summary', label: '摘要' }),
+                      ]),
+                      h('div', { class: 'inline-form' }, [
                         h(
-                          ETimelineItem,
-                          { timestamp: entry.created_at },
-                          () => `${entry.actor.display_name} ${entry.summary}`,
+                          ESelect,
+                          {
+                            modelValue: devRecord.record_type,
+                            'onUpdate:modelValue': (v: string) =>
+                              (devRecord.record_type = v),
+                          },
+                          () => [
+                            h(EOption, { label: 'Branch', value: 'branch' }),
+                            h(EOption, { label: 'Commit', value: 'commit' }),
+                            h(EOption, { label: 'PR', value: 'pull_request' }),
+                            h(EOption, { label: 'CI', value: 'ci' }),
+                          ],
+                        ),
+                        h(EInput, {
+                          modelValue: devRecord.title,
+                          'onUpdate:modelValue': (v: string) =>
+                            (devRecord.title = v),
+                          placeholder: '标题',
+                        }),
+                        h(
+                          EButton,
+                          {
+                            type: 'primary',
+                            onClick: () => devMutation.mutate(item),
+                          },
+                          () => '添加',
+                        ),
+                      ]),
+                    ]),
+                    h(ETabPane, { label: '测试', name: 'tests' }, () =>
+                      h(ETable, { data: item.test_runs }, () => [
+                        h(ETableColumn, { prop: 'title', label: '执行' }),
+                        h(ETableColumn, {
+                          prop: 'status',
+                          label: '状态',
+                          width: 120,
+                        }),
+                        h(
+                          ETableColumn,
+                          { label: '执行人', width: 140 },
+                          {
+                            default: ({ row }: any) =>
+                              row.executor?.display_name ?? '-',
+                          },
+                        ),
+                      ]),
+                    ),
+                    h(ETabPane, { label: '历史', name: 'history' }, () =>
+                      h(ETimeline, () =>
+                        item.history.map((entry) =>
+                          h(
+                            ETimelineItem,
+                            { timestamp: entry.created_at },
+                            () =>
+                              `${entry.actor.display_name} ${entry.summary}`,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          },
-        ),
-      ])
+                  ],
+                ),
+              ],
+            },
+          ),
+        ],
+      )
     }
   },
 })
@@ -2095,6 +2326,21 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  width: 100%;
+  max-width: 1520px;
+  margin: 0 auto;
+}
+
+.project-detail-content {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.requirement-editor-shell {
+  display: grid;
+  gap: 16px;
+  width: 100%;
 }
 
 .project-detail-header,
@@ -2178,7 +2424,64 @@ onMounted(() => {
 }
 
 .project-detail-panel {
+  min-width: 0;
   padding: var(--space-3);
+}
+
+.work-item-list-panel {
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.work-item-list-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  min-width: 0;
+}
+
+.work-item-list-panel__toolbar h2 {
+  flex: none;
+}
+
+.work-item-list-panel__filters {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 320px;
+}
+
+.work-item-list-panel__filters :deep(.el-input) {
+  width: 260px;
+  max-width: 100%;
+}
+
+.work-item-list-panel__filters :deep(.el-select) {
+  width: 180px;
+}
+
+.work-item-list-panel__table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.work-item-list-panel__table-wrap :deep(.el-table) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.work-item-list-panel__table-wrap :deep(.el-table__inner-wrapper),
+.work-item-list-panel__table-wrap :deep(.el-table__body-wrapper),
+.work-item-list-panel__table-wrap :deep(.el-scrollbar) {
+  max-width: 100%;
 }
 
 .project-detail-panel--wide {
@@ -2221,9 +2524,23 @@ onMounted(() => {
   margin-bottom: var(--space-2);
 }
 
+.transition-bar {
+  padding: 12px 0 4px;
+}
+
+.transition-bar :deep(.el-input) {
+  min-width: 260px;
+  flex: 1;
+}
+
+.comment-list {
+  display: grid;
+  gap: 8px;
+}
+
 .comment-item {
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-border);
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(40, 70, 100, 0.1);
 }
 
 .comment-item span {

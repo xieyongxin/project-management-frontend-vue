@@ -1,8 +1,8 @@
 import type { ProjectSummaryDto } from '@/shared/api/generated/models'
 
 export const methodLabel: Record<ProjectSummaryDto['method'], string> = {
-  scrum: 'Scrum',
-  waterfall: 'Waterfall',
+  scrum: '敏捷项目',
+  waterfall: '瀑布项目',
 }
 
 export const statusLabel: Record<ProjectSummaryDto['status'], string> = {

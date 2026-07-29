@@ -317,7 +317,7 @@ export const getDefaultConfigurationState = (): ConfigurationState => ({
   projectTypes: [
     {
       typeKey: 'scrum',
-      name: '敏捷项目（Scrum）',
+      name: '敏捷项目',
       method: 'scrum',
       description: '适用于持续迭代、需求池、Sprint 计划和看板流转的项目。',
       updatedBy: '系统初始化',
@@ -337,7 +337,7 @@ export const getDefaultConfigurationState = (): ConfigurationState => ({
     },
     {
       typeKey: 'waterfall',
-      name: '瀑布项目（Waterfall）',
+      name: '瀑布项目',
       method: 'waterfall',
       description: '适用于阶段推进、里程碑验收和阶段质量风险提示的项目。',
       updatedBy: '系统初始化',
