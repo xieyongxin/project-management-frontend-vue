@@ -4,6 +4,8 @@
  * Project Management Backend API
  * OpenAPI spec version: 0.2.0
  */
+import type { SprintCategoryDto } from './sprintCategoryDto'
+import type { SprintReportSnapshotDto } from './sprintReportSnapshotDto'
 import type { UserLiteDto } from './userLiteDto'
 
 export interface SprintDto {
@@ -11,14 +13,31 @@ export interface SprintDto {
   project_id: string
   name: string
   goal: string
+  description: string
   status: string
   start_date: string
   end_date: string
-  owner?: UserLiteDto | null
+  completed_at: string
+  assignee?: UserLiteDto | null
+  category?: SprintCategoryDto | null
   planned_story_points: number
-  planned_hours: number
+  started_story_points: number
+  completed_story_points: number
+  planned_workload_hours: number
+  completed_workload_hours: number
   completed_work_items: number
   total_work_items: number
+  requirement_count: number
+  task_count: number
+  defect_count: number
+  test_plan_count: number
+  test_run_total: number
+  test_run_passed: number
+  test_run_failed: number
+  capacity_hours: number
+  capacity_usage_percent: number
+  capacity_status: string
   report_summary: string
+  latest_report?: SprintReportSnapshotDto | null
   row_version: number
 }

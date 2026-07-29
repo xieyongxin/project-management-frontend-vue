@@ -1,30 +1,41 @@
 import {
+  addVersionScope,
   createDevRecord,
   createOrLinkRunDefect,
   createRequirementAcceptance,
   createSprint,
+  createSprintCategory,
   createVersion,
   createWorkItem,
   createWorkItemComment,
+  completeSprint,
   getProjectActivity,
   getProjectConfiguration,
   getProjectDefects,
   getProjectMembers,
   getProjectPhases,
   getProjectRequirements,
+  getProjectSprintCategories,
   getProjectSprints,
   getProjectTasks,
   getProjectTestExecutionBoard,
   getProjectTestRun,
+  getProjectVersionStages,
   getProjectVersions,
+  getSprint,
   getUsers,
+  getVersion,
   getWorkItem,
   releaseVersion,
+  reopenSprint,
   removeProjectMember,
   saveProjectMember,
+  startSprint,
   transitionWorkItem,
   updatePhase,
+  updateSprint,
   updateTestRunStep,
+  updateVersion,
   updateWorkItem,
 } from '@/shared/api/generated/auth-api'
 import type {
@@ -33,10 +44,13 @@ import type {
   ProjectMemberSaveRequest,
   RequirementAcceptanceRequest,
   ReleaseRequest,
+  SprintCategorySaveRequest,
   SprintSaveRequest,
+  SprintTransitionRequest,
   TestRunDefectRequest,
   TestRunStepUpdateRequest,
   VersionSaveRequest,
+  VersionScopeRequest,
   WorkItemCommentCreateRequest,
   WorkItemCreateRequest,
   WorkItemTransitionRequest,
@@ -56,8 +70,12 @@ export const projectDetailApi = {
   configuration: getProjectConfiguration,
   members: getProjectMembers,
   sprints: getProjectSprints,
+  sprintCategories: getProjectSprintCategories,
+  sprint: getSprint,
   phases: getProjectPhases,
   versions: getProjectVersions,
+  versionStages: getProjectVersionStages,
+  version: getVersion,
   testBoard: getProjectTestExecutionBoard,
   testRun: getProjectTestRun,
   workItem: getWorkItem,
@@ -104,12 +122,40 @@ export const projectDetailApi = {
     return createSprint(projectId, payload)
   },
 
+  createSprintCategory(projectId: string, payload: SprintCategorySaveRequest) {
+    return createSprintCategory(projectId, payload)
+  },
+
+  updateSprint(id: string, payload: SprintSaveRequest) {
+    return updateSprint(id, payload)
+  },
+
+  startSprint(id: string, payload: SprintTransitionRequest) {
+    return startSprint(id, payload)
+  },
+
+  completeSprint(id: string, payload: SprintTransitionRequest) {
+    return completeSprint(id, payload)
+  },
+
+  reopenSprint(id: string, payload: SprintTransitionRequest) {
+    return reopenSprint(id, payload)
+  },
+
   updatePhase(id: string, payload: PhaseUpdateRequest) {
     return updatePhase(id, payload)
   },
 
   createVersion(projectId: string, payload: VersionSaveRequest) {
     return createVersion(projectId, payload)
+  },
+
+  updateVersion(id: string, payload: VersionSaveRequest) {
+    return updateVersion(id, payload)
+  },
+
+  addVersionScope(id: string, payload: VersionScopeRequest) {
+    return addVersionScope(id, payload)
   },
 
   releaseVersion(id: string, payload: ReleaseRequest) {

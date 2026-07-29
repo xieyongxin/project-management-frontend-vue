@@ -308,8 +308,11 @@ import {
 import type {
   ProjectActivityEvent,
   ProjectPhase,
+  ProjectSprint,
+  ProjectSprintCategory,
   ProjectTestRun,
   ProjectVersion,
+  ProjectVersionStage,
   WorkItem,
   WorkItemCreatePayload,
   WorkItemSummary,
@@ -1814,44 +1817,583 @@ const WorkItemDetailPanel = defineComponent({
 
 const SprintPanel = defineComponent({
   setup() {
+    const selectedSprintId = ref('')
     const query = useQuery({
       queryKey: computed(() => ['projects', projectId.value, 'sprints']),
       queryFn: () => projectDetailApi.sprints(projectId.value),
+      enabled: computed(() => Boolean(projectId.value)),
     })
-    const form = reactive({ name: '', goal: '', status: 'planned' })
-    const mutation = useMutation({
+    const categoriesQuery = useQuery({
+      queryKey: computed(() => [
+        'projects',
+        projectId.value,
+        'sprint-categories',
+      ]),
+      queryFn: () => projectDetailApi.sprintCategories(projectId.value),
+      enabled: computed(() => Boolean(projectId.value)),
+    })
+
+    const createForm = reactive({
+      name: '',
+      goal: '',
+      assignee_id: '',
+      category_id: '',
+    })
+    const detailForm = reactive({
+      name: '',
+      goal: '',
+      description: '',
+      start_date: '',
+      end_date: '',
+      assignee_id: '',
+      category_id: '',
+      planned_story_points: 0,
+      planned_workload_hours: 0,
+    })
+    const categoryForm = reactive({ name: '', color: '#409EFF' })
+
+    const sprintRows = computed(() => query.data.value ?? [])
+    const categoryRows = computed(() => categoriesQuery.data.value ?? [])
+    const memberOptions = computed(() =>
+      (membersQuery.data.value ?? [])
+        .filter((member: any) => member.active)
+        .map((member: any) => member.user),
+    )
+    const selectedSprint = computed<ProjectSprint | undefined>(() => {
+      const rows = sprintRows.value
+      return (
+        rows.find((sprint) => sprint.id === selectedSprintId.value) ?? rows[0]
+      )
+    })
+
+    watch(
+      selectedSprint,
+      (sprint) => {
+        if (!sprint) {
+          return
+        }
+        selectedSprintId.value = sprint.id
+        detailForm.name = sprint.name
+        detailForm.goal = sprint.goal
+        detailForm.description = sprint.description
+        detailForm.start_date = sprint.start_date
+        detailForm.end_date = sprint.end_date
+        detailForm.assignee_id = sprint.assignee?.id ?? ''
+        detailForm.category_id = sprint.category?.id ?? ''
+        detailForm.planned_story_points = sprint.planned_story_points
+        detailForm.planned_workload_hours = sprint.planned_workload_hours
+      },
+      { immediate: true },
+    )
+
+    const createMutation = useMutation({
       mutationFn: () =>
-        projectDetailApi.createSprint(projectId.value, form as any),
-      onSuccess: () => query.refetch(),
+        projectDetailApi.createSprint(projectId.value, {
+          name: createForm.name.trim(),
+          goal: createForm.goal.trim(),
+          status: 'pending',
+          assignee_id: createForm.assignee_id || null,
+          category_id: createForm.category_id || null,
+        }),
+      onSuccess: (rows) => {
+        selectedSprintId.value = rows.at(-1)?.id ?? selectedSprintId.value
+        createForm.name = ''
+        createForm.goal = ''
+        createForm.assignee_id = ''
+        createForm.category_id = ''
+        ElMessage.success('迭代已创建')
+        void query.refetch()
+      },
     })
+    const categoryMutation = useMutation({
+      mutationFn: () =>
+        projectDetailApi.createSprintCategory(projectId.value, {
+          name: categoryForm.name.trim(),
+          color: categoryForm.color || '#409EFF',
+        }),
+      onSuccess: () => {
+        categoryForm.name = ''
+        ElMessage.success('迭代分类已创建')
+        void categoriesQuery.refetch()
+      },
+    })
+    const saveMutation = useMutation({
+      mutationFn: ({
+        sprint,
+        payload,
+      }: {
+        sprint: ProjectSprint
+        payload: Record<string, unknown>
+      }) => projectDetailApi.updateSprint(sprint.id, payload as any),
+      onSuccess: (sprint) => {
+        selectedSprintId.value = sprint.id
+        ElMessage.success('迭代已保存')
+        void query.refetch()
+      },
+    })
+    const transitionMutation = useMutation({
+      mutationFn: ({
+        sprint,
+        action,
+      }: {
+        sprint: ProjectSprint
+        action: 'start' | 'complete' | 'reopen'
+      }) => {
+        const payload = { row_version: sprint.row_version }
+        if (action === 'start') {
+          return projectDetailApi.startSprint(sprint.id, payload)
+        }
+        if (action === 'complete') {
+          return projectDetailApi.completeSprint(sprint.id, payload)
+        }
+        return projectDetailApi.reopenSprint(sprint.id, payload)
+      },
+      onSuccess: (sprint) => {
+        selectedSprintId.value = sprint.id
+        void Promise.all([query.refetch(), overviewQuery.refetch()])
+      },
+    })
+
+    const statusLabel: Record<string, string> = {
+      pending: '未开始',
+      in_progress: '进行中',
+      completed: '已完成',
+    }
+    const statusTone: Record<string, 'info' | 'success' | 'warning'> = {
+      pending: 'info',
+      in_progress: 'warning',
+      completed: 'success',
+    }
+    const capacityTone: Record<
+      string,
+      'info' | 'success' | 'warning' | 'danger'
+    > = {
+      unknown: 'info',
+      normal: 'success',
+      busy: 'warning',
+      overloaded: 'danger',
+      critical: 'danger',
+    }
+
+    const sprintCountByStatus = (status: string) =>
+      sprintRows.value.filter((sprint) => sprint.status === status).length
+
+    const sprintReportText = (sprint: ProjectSprint) => {
+      const latestSummary = sprint.latest_report?.summary?.trim()
+      if (latestSummary) {
+        return latestSummary
+      }
+      const reportSummary = sprint.report_summary.trim()
+      if (reportSummary) {
+        return reportSummary
+      }
+      return '暂无报告快照'
+    }
+
+    const createSprintSubmit = () => {
+      if (!createForm.name.trim()) {
+        ElMessage.warning('请输入迭代名称')
+        return
+      }
+      createMutation.mutate()
+    }
+
+    const createCategorySubmit = () => {
+      if (!categoryForm.name.trim()) {
+        ElMessage.warning('请输入分类名称')
+        return
+      }
+      categoryMutation.mutate()
+    }
+
+    const saveSelectedSprint = () => {
+      const sprint = selectedSprint.value
+      if (!sprint) {
+        return
+      }
+      if (!detailForm.name.trim()) {
+        ElMessage.warning('请输入迭代名称')
+        return
+      }
+      saveMutation.mutate({
+        sprint,
+        payload: {
+          name: detailForm.name.trim(),
+          goal: detailForm.goal,
+          description: detailForm.description,
+          status: sprint.status,
+          start_date: detailForm.start_date,
+          end_date: detailForm.end_date,
+          assignee_id: detailForm.assignee_id || null,
+          category_id: detailForm.category_id || null,
+          planned_story_points: Number(detailForm.planned_story_points) || 0,
+          planned_workload_hours:
+            Number(detailForm.planned_workload_hours) || 0,
+          row_version: sprint.row_version,
+        },
+      })
+    }
+
+    const renderMemberOptions = () =>
+      memberOptions.value.map((user: any) =>
+        h(EOption, {
+          key: user.id,
+          label: user.display_name,
+          value: user.id,
+        }),
+      )
+
+    const renderCategoryOptions = () =>
+      categoryRows.value.map((category: ProjectSprintCategory) =>
+        h(EOption, {
+          key: category.id,
+          label: category.name,
+          value: category.id,
+        }),
+      )
+
+    const renderTransitionButton = (
+      sprint: ProjectSprint,
+      action: 'start' | 'complete' | 'reopen',
+      label: string,
+      type: 'primary' | 'success' | 'warning',
+    ) =>
+      h(
+        EButton,
+        {
+          size: 'small',
+          type,
+          disabled:
+            isProjectArchived.value || transitionMutation.isPending.value,
+          onClick: (event: MouseEvent) => {
+            event.stopPropagation()
+            transitionMutation.mutate({ sprint, action })
+          },
+        },
+        () => label,
+      )
+
+    const renderSprintActions = (sprint: ProjectSprint) => {
+      if (sprint.status === 'pending') {
+        return renderTransitionButton(sprint, 'start', '开始', 'primary')
+      }
+      if (sprint.status === 'in_progress') {
+        return renderTransitionButton(sprint, 'complete', '完成', 'success')
+      }
+      return renderTransitionButton(sprint, 'reopen', '重开', 'warning')
+    }
+
     return () =>
-      h('section', { class: 'project-detail-panel' }, [
+      h('section', { class: 'project-detail-panel sprint-panel' }, [
         h('div', { class: 'panel-heading' }, [
-          h('h2', 'Sprints'),
+          h('div', [
+            h('h2', '迭代'),
+            h(
+              'p',
+              { class: 'eyebrow' },
+              '按状态、范围、测试和报告查看 Scrum 迭代',
+            ),
+          ]),
+          h('div', { class: 'sprint-status-summary' }, [
+            h(
+              ETag,
+              { type: 'info' },
+              () => `未开始 ${sprintCountByStatus('pending')}`,
+            ),
+            h(
+              ETag,
+              { type: 'warning' },
+              () => `进行中 ${sprintCountByStatus('in_progress')}`,
+            ),
+            h(
+              ETag,
+              { type: 'success' },
+              () => `已完成 ${sprintCountByStatus('completed')}`,
+            ),
+          ]),
+        ]),
+        h('div', { class: 'sprint-create-row' }, [
+          h(EInput, {
+            modelValue: createForm.name,
+            'onUpdate:modelValue': (value: string) => (createForm.name = value),
+            placeholder: '迭代名称',
+          }),
+          h(EInput, {
+            modelValue: createForm.goal,
+            'onUpdate:modelValue': (value: string) => (createForm.goal = value),
+            placeholder: '迭代目标',
+          }),
+          h(
+            ESelect,
+            {
+              modelValue: createForm.assignee_id,
+              'onUpdate:modelValue': (value: string) =>
+                (createForm.assignee_id = value),
+              clearable: true,
+              placeholder: '负责人',
+            },
+            renderMemberOptions,
+          ),
+          h(
+            ESelect,
+            {
+              modelValue: createForm.category_id,
+              'onUpdate:modelValue': (value: string) =>
+                (createForm.category_id = value),
+              clearable: true,
+              placeholder: '分类',
+            },
+            renderCategoryOptions,
+          ),
           h(
             EButton,
-            { type: 'primary', onClick: () => mutation.mutate() },
-            () => 'Create',
-          ),
-        ]),
-        h(EInput, {
-          modelValue: form.name,
-          'onUpdate:modelValue': (v: string) => (form.name = v),
-          placeholder: 'Name',
-        }),
-        h(ETable, { data: query.data.value ?? [] }, () => [
-          h(ETableColumn, { prop: 'name', label: 'Sprint' }),
-          h(ETableColumn, { prop: 'goal', label: 'Goal' }),
-          h(ETableColumn, { prop: 'status', label: 'Status', width: 120 }),
-          h(
-            ETableColumn,
-            { label: 'Progress', width: 160 },
             {
-              default: ({ row }: any) =>
-                `${row.completed_work_items}/${row.total_work_items}`,
+              type: 'primary',
+              loading: createMutation.isPending.value,
+              disabled: isProjectArchived.value,
+              onClick: createSprintSubmit,
             },
+            () => '新建',
           ),
         ]),
+        h('div', { class: 'sprint-category-row' }, [
+          h(EInput, {
+            modelValue: categoryForm.name,
+            'onUpdate:modelValue': (value: string) =>
+              (categoryForm.name = value),
+            placeholder: '轻量分类名称',
+          }),
+          h(EInput, {
+            modelValue: categoryForm.color,
+            'onUpdate:modelValue': (value: string) =>
+              (categoryForm.color = value),
+            placeholder: '#409EFF',
+          }),
+          h(
+            EButton,
+            {
+              loading: categoryMutation.isPending.value,
+              disabled: isProjectArchived.value,
+              onClick: createCategorySubmit,
+            },
+            () => '添加分类',
+          ),
+        ]),
+        h('div', { class: 'sprint-table-wrap' }, [
+          h(
+            ETable,
+            {
+              data: sprintRows.value,
+              rowKey: 'id',
+              highlightCurrentRow: true,
+              onRowClick: (row: ProjectSprint) => {
+                selectedSprintId.value = row.id
+              },
+            },
+            () => [
+              h(ETableColumn, { prop: 'name', label: '迭代', minWidth: 160 }),
+              h(ETableColumn, {
+                prop: 'category.name',
+                label: '分类',
+                width: 120,
+              }),
+              h(
+                ETableColumn,
+                { label: '状态', width: 120 },
+                {
+                  default: ({ row }: { row: ProjectSprint }) =>
+                    h(
+                      ETag,
+                      { type: statusTone[row.status] ?? 'info' },
+                      () => statusLabel[row.status] ?? row.status,
+                    ),
+                },
+              ),
+              h(ETableColumn, {
+                label: '负责人',
+                width: 140,
+                formatter: (row: ProjectSprint) =>
+                  row.assignee?.display_name ?? '-',
+              }),
+              h(
+                ETableColumn,
+                { label: '范围', width: 140 },
+                {
+                  default: ({ row }: { row: ProjectSprint }) =>
+                    `${row.completed_work_items}/${row.total_work_items} 项`,
+                },
+              ),
+              h(
+                ETableColumn,
+                { label: '质量', width: 150 },
+                {
+                  default: ({ row }: { row: ProjectSprint }) =>
+                    `${row.test_run_passed}/${row.test_run_total} 通过`,
+                },
+              ),
+              h(
+                ETableColumn,
+                { label: '容量', width: 160 },
+                {
+                  default: ({ row }: { row: ProjectSprint }) =>
+                    h(
+                      ETag,
+                      { type: capacityTone[row.capacity_status] ?? 'info' },
+                      () =>
+                        row.capacity_hours
+                          ? `${Math.round(row.capacity_usage_percent)}%`
+                          : '未计算',
+                    ),
+                },
+              ),
+              h(
+                ETableColumn,
+                { label: '操作', width: 120 },
+                {
+                  default: ({ row }: { row: ProjectSprint }) =>
+                    renderSprintActions(row),
+                },
+              ),
+            ],
+          ),
+        ]),
+        selectedSprint.value
+          ? h('div', { class: 'sprint-detail' }, [
+              h('div', { class: 'sprint-detail__heading' }, [
+                h('div', [
+                  h('h3', selectedSprint.value.name),
+                  h(
+                    'p',
+                    { class: 'eyebrow' },
+                    `${formatPlanRange(
+                      selectedSprint.value.start_date,
+                      selectedSprint.value.end_date,
+                    )} · ${
+                      selectedSprint.value.assignee?.display_name ?? '未分配'
+                    }`,
+                  ),
+                ]),
+                h(
+                  ETag,
+                  {
+                    type: statusTone[selectedSprint.value.status] ?? 'info',
+                  },
+                  () =>
+                    statusLabel[selectedSprint.value?.status ?? ''] ??
+                    selectedSprint.value?.status,
+                ),
+              ]),
+              h('div', { class: 'sprint-metrics' }, [
+                h('div', [
+                  h('strong', String(selectedSprint.value.total_work_items)),
+                  h('span', '范围项'),
+                ]),
+                h('div', [
+                  h(
+                    'strong',
+                    `${selectedSprint.value.completed_story_points}/${selectedSprint.value.planned_story_points}`,
+                  ),
+                  h('span', '故事点'),
+                ]),
+                h('div', [
+                  h(
+                    'strong',
+                    `${selectedSprint.value.completed_workload_hours}/${selectedSprint.value.planned_workload_hours}`,
+                  ),
+                  h('span', '工时'),
+                ]),
+                h('div', [
+                  h(
+                    'strong',
+                    `${selectedSprint.value.test_run_passed}/${selectedSprint.value.test_run_total}`,
+                  ),
+                  h('span', '测试通过'),
+                ]),
+              ]),
+              h('div', { class: 'sprint-detail-form' }, [
+                h(EInput, {
+                  modelValue: detailForm.name,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.name = value),
+                  placeholder: '迭代名称',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.goal,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.goal = value),
+                  placeholder: '迭代目标',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.description,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.description = value),
+                  placeholder: '迭代描述',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.start_date,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.start_date = value),
+                  placeholder: '开始日期 YYYY-MM-DD',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.end_date,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.end_date = value),
+                  placeholder: '结束日期 YYYY-MM-DD',
+                }),
+                h(
+                  ESelect,
+                  {
+                    modelValue: detailForm.assignee_id,
+                    'onUpdate:modelValue': (value: string) =>
+                      (detailForm.assignee_id = value),
+                    clearable: true,
+                    placeholder: '负责人',
+                  },
+                  renderMemberOptions,
+                ),
+                h(
+                  ESelect,
+                  {
+                    modelValue: detailForm.category_id,
+                    'onUpdate:modelValue': (value: string) =>
+                      (detailForm.category_id = value),
+                    clearable: true,
+                    placeholder: '分类',
+                  },
+                  renderCategoryOptions,
+                ),
+                h(EInput, {
+                  type: 'number',
+                  modelValue: detailForm.planned_story_points,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.planned_story_points = Number(value) || 0),
+                  placeholder: '计划故事点',
+                }),
+                h(EInput, {
+                  type: 'number',
+                  modelValue: detailForm.planned_workload_hours,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.planned_workload_hours = Number(value) || 0),
+                  placeholder: '计划工时',
+                }),
+                h(
+                  EButton,
+                  {
+                    type: 'primary',
+                    loading: saveMutation.isPending.value,
+                    disabled: isProjectArchived.value,
+                    onClick: saveSelectedSprint,
+                  },
+                  () => '保存详情',
+                ),
+              ]),
+              h('div', { class: 'sprint-report' }, [
+                h('h3', '迭代报告快照'),
+                h('p', sprintReportText(selectedSprint.value)),
+              ]),
+            ])
+          : h('p', { class: 'eyebrow' }, '暂无迭代'),
       ])
   },
 })
@@ -1911,21 +2453,142 @@ const PhasePanel = defineComponent({
 
 const VersionPanel = defineComponent({
   setup() {
+    const selectedVersionId = ref('')
     const query = useQuery({
       queryKey: computed(() => ['projects', projectId.value, 'versions']),
       queryFn: () => projectDetailApi.versions(projectId.value),
+      enabled: computed(() => Boolean(projectId.value)),
     })
-    const form = reactive({
+    const stagesQuery = useQuery({
+      queryKey: computed(() => ['projects', projectId.value, 'version-stages']),
+      queryFn: () => projectDetailApi.versionStages(projectId.value),
+      enabled: computed(() => Boolean(projectId.value)),
+    })
+    const scopeOptionsQuery = useQuery({
+      queryKey: computed(() => [
+        'projects',
+        projectId.value,
+        'version-scope-options',
+      ]),
+      queryFn: async () => {
+        const [requirements, tasks, defects] = await Promise.all([
+          projectDetailApi.workItems(projectId.value, 'requirements', {
+            page: 1,
+            page_size: 100,
+          }),
+          projectDetailApi.workItems(projectId.value, 'tasks', {
+            page: 1,
+            page_size: 100,
+          }),
+          projectDetailApi.workItems(projectId.value, 'defects', {
+            page: 1,
+            page_size: 100,
+          }),
+        ])
+        return [...requirements.data, ...tasks.data, ...defects.data]
+      },
+      enabled: computed(() => Boolean(projectId.value)),
+    })
+
+    const createForm = reactive({
       name: '',
-      status: 'planning',
+      stage_id: '',
+      assignee_id: '',
+    })
+    const detailForm = reactive({
+      name: '',
+      stage_id: '',
+      assignee_id: '',
+      start_at: '',
+      release_at: '',
       description: '',
       test_conclusion: '',
       risk_summary: '',
     })
+    const scopeForm = reactive({ work_item_id: '' })
+
+    const versionRows = computed(() => query.data.value ?? [])
+    const stageRows = computed(() => stagesQuery.data.value ?? [])
+    const editableStageRows = computed(() =>
+      stageRows.value.filter((stage) => stage.type !== 'released'),
+    )
+    const memberOptions = computed(() =>
+      (membersQuery.data.value ?? [])
+        .filter((member: any) => member.active)
+        .map((member: any) => member.user),
+    )
+    const selectedVersion = computed<ProjectVersion | undefined>(() => {
+      const rows = versionRows.value
+      return (
+        rows.find((version) => version.id === selectedVersionId.value) ??
+        rows[0]
+      )
+    })
+    const availableScopeOptions = computed(() => {
+      const version = selectedVersion.value
+      if (!version) {
+        return []
+      }
+      return (scopeOptionsQuery.data.value ?? []).filter(
+        (item) => item.version_id !== version.id,
+      )
+    })
+
+    watch(
+      [selectedVersion, stageRows],
+      ([version, stages]) => {
+        const pendingStageId =
+          stages.find((stage) => stage.type === 'pending')?.id ?? ''
+        if (!version) {
+          if (!createForm.stage_id) {
+            createForm.stage_id = pendingStageId
+          }
+          return
+        }
+        selectedVersionId.value = version.id
+        detailForm.name = version.name
+        detailForm.stage_id = version.stage?.id ?? ''
+        detailForm.assignee_id = version.assignee?.id ?? ''
+        detailForm.start_at = version.start_at
+        detailForm.release_at = version.release_at
+        detailForm.description = version.description
+        detailForm.test_conclusion = version.test_conclusion
+        detailForm.risk_summary = version.risk_summary
+        if (!createForm.stage_id) {
+          createForm.stage_id = pendingStageId
+        }
+      },
+      { immediate: true },
+    )
+
     const createMutation = useMutation({
       mutationFn: () =>
-        projectDetailApi.createVersion(projectId.value, form as any),
-      onSuccess: () => query.refetch(),
+        projectDetailApi.createVersion(projectId.value, {
+          name: createForm.name.trim(),
+          stage_id: createForm.stage_id || null,
+          assignee_id: createForm.assignee_id || null,
+        }),
+      onSuccess: (version) => {
+        selectedVersionId.value = version.id
+        createForm.name = ''
+        createForm.assignee_id = ''
+        ElMessage.success('版本已创建')
+        void query.refetch()
+      },
+    })
+    const saveMutation = useMutation({
+      mutationFn: ({
+        version,
+        payload,
+      }: {
+        version: ProjectVersion
+        payload: Record<string, unknown>
+      }) => projectDetailApi.updateVersion(version.id, payload as any),
+      onSuccess: (version) => {
+        selectedVersionId.value = version.id
+        ElMessage.success('版本已保存')
+        void query.refetch()
+      },
     })
     const releaseMutation = useMutation({
       mutationFn: (version: ProjectVersion) =>
@@ -1933,51 +2596,410 @@ const VersionPanel = defineComponent({
           environment: 'production',
           summary: version.risk_summary,
           row_version: version.row_version,
-        } as any),
-      onSuccess: () => query.refetch(),
+        }),
+      onSuccess: (version) => {
+        selectedVersionId.value = version.id
+        ElMessage.success('版本已发布')
+        void Promise.all([query.refetch(), overviewQuery.refetch()])
+      },
     })
+    const scopeMutation = useMutation({
+      mutationFn: ({
+        version,
+        workItemId,
+      }: {
+        version: ProjectVersion
+        workItemId: string
+      }) =>
+        projectDetailApi.addVersionScope(version.id, {
+          row_version: version.row_version,
+          items: [{ target_type: 'work_item', target_id: workItemId }],
+        }),
+      onSuccess: (version) => {
+        selectedVersionId.value = version.id
+        scopeForm.work_item_id = ''
+        ElMessage.success('已加入版本范围')
+        void Promise.all([query.refetch(), scopeOptionsQuery.refetch()])
+      },
+    })
+
+    const statusLabel: Record<string, string> = {
+      pending: '未开始',
+      in_progress: '进行中',
+      released: '已发布',
+      archived: '已归档',
+    }
+    const statusTone: Record<string, 'info' | 'success' | 'warning'> = {
+      pending: 'info',
+      in_progress: 'warning',
+      released: 'success',
+      archived: 'info',
+    }
+
+    const renderStageOptions = (stages: ProjectVersionStage[]) =>
+      stages.map((stage) =>
+        h(EOption, {
+          key: stage.id,
+          label: stage.name,
+          value: stage.id,
+        }),
+      )
+
+    const renderMemberOptions = () =>
+      memberOptions.value.map((user: any) =>
+        h(EOption, {
+          key: user.id,
+          label: user.display_name,
+          value: user.id,
+        }),
+      )
+
+    const versionReleaseIssues = (version: ProjectVersion) => {
+      const issues: string[] = []
+      if (version.open_blocker_defect_count > 0) {
+        issues.push(
+          `${version.open_blocker_defect_count} 个阻塞/严重缺陷未关闭`,
+        )
+      }
+      if (version.test_plan_count === 0) {
+        issues.push('未关联测试计划')
+      } else if (version.incomplete_test_plan_count > 0) {
+        issues.push(`${version.incomplete_test_plan_count} 个测试计划未完成`)
+      }
+      return issues
+    }
+
+    const submitCreateVersion = () => {
+      if (!createForm.name.trim()) {
+        ElMessage.warning('请输入版本名称')
+        return
+      }
+      createMutation.mutate()
+    }
+
+    const submitSaveVersion = () => {
+      const version = selectedVersion.value
+      if (!version) {
+        return
+      }
+      if (!detailForm.name.trim()) {
+        ElMessage.warning('请输入版本名称')
+        return
+      }
+      saveMutation.mutate({
+        version,
+        payload: {
+          name: detailForm.name.trim(),
+          stage_id: detailForm.stage_id || null,
+          assignee_id: detailForm.assignee_id || null,
+          start_at: detailForm.start_at,
+          release_at: detailForm.release_at,
+          description: detailForm.description,
+          test_conclusion: detailForm.test_conclusion,
+          risk_summary: detailForm.risk_summary,
+          row_version: version.row_version,
+        },
+      })
+    }
+
+    const submitReleaseVersion = (version: ProjectVersion) => {
+      const issues = versionReleaseIssues(version)
+      if (issues.length > 0) {
+        ElMessage.warning(issues.join('；'))
+        return
+      }
+      releaseMutation.mutate(version)
+    }
+
+    const submitAddScope = () => {
+      const version = selectedVersion.value
+      if (!version || !scopeForm.work_item_id) {
+        ElMessage.warning('请选择要加入范围的工作项')
+        return
+      }
+      scopeMutation.mutate({
+        version,
+        workItemId: scopeForm.work_item_id,
+      })
+    }
+
     return () =>
-      h('section', { class: 'project-detail-panel' }, [
+      h('section', { class: 'project-detail-panel version-panel' }, [
         h('div', { class: 'panel-heading' }, [
-          h('h2', 'Versions'),
+          h('div', [
+            h('h2', '版本'),
+            h(
+              'p',
+              { class: 'eyebrow' },
+              '维护发布范围、阶段、质量风险和发布动作',
+            ),
+          ]),
           h(
             EButton,
-            { type: 'primary', onClick: () => createMutation.mutate() },
-            () => 'Create',
+            {
+              type: 'primary',
+              loading: createMutation.isPending.value,
+              disabled: isProjectArchived.value,
+              onClick: submitCreateVersion,
+            },
+            () => '新建版本',
           ),
         ]),
-        h(EInput, {
-          modelValue: form.name,
-          'onUpdate:modelValue': (v: string) => (form.name = v),
-          placeholder: 'Name',
-        }),
-        h(ETable, { data: query.data.value ?? [] }, () => [
-          h(ETableColumn, { prop: 'name', label: 'Version' }),
-          h(ETableColumn, { prop: 'status', label: 'Status', width: 120 }),
-          h(ETableColumn, { prop: 'scope_count', label: 'Scope', width: 100 }),
-          h(ETableColumn, {
-            prop: 'test_conclusion',
-            label: 'Test Conclusion',
+        h('div', { class: 'version-create-row' }, [
+          h(EInput, {
+            modelValue: createForm.name,
+            'onUpdate:modelValue': (value: string) => (createForm.name = value),
+            placeholder: '版本名称',
           }),
-          h(ETableColumn, { prop: 'risk_summary', label: 'Risk' }),
           h(
-            ETableColumn,
-            { label: 'Action', width: 120 },
+            ESelect,
             {
-              default: ({ row }: any) =>
+              modelValue: createForm.stage_id,
+              'onUpdate:modelValue': (value: string) =>
+                (createForm.stage_id = value),
+              placeholder: '阶段',
+            },
+            () => renderStageOptions(editableStageRows.value),
+          ),
+          h(
+            ESelect,
+            {
+              modelValue: createForm.assignee_id,
+              'onUpdate:modelValue': (value: string) =>
+                (createForm.assignee_id = value),
+              clearable: true,
+              placeholder: '负责人',
+            },
+            renderMemberOptions,
+          ),
+        ]),
+        h('div', { class: 'version-table-wrap' }, [
+          h(
+            ETable,
+            {
+              data: versionRows.value,
+              rowKey: 'id',
+              highlightCurrentRow: true,
+              onRowClick: (row: ProjectVersion) => {
+                selectedVersionId.value = row.id
+              },
+            },
+            () => [
+              h(ETableColumn, { prop: 'name', label: '版本', minWidth: 160 }),
+              h(
+                ETableColumn,
+                { label: '阶段', width: 120 },
+                {
+                  default: ({ row }: { row: ProjectVersion }) =>
+                    row.stage?.name ?? '-',
+                },
+              ),
+              h(
+                ETableColumn,
+                { label: '状态', width: 120 },
+                {
+                  default: ({ row }: { row: ProjectVersion }) =>
+                    h(
+                      ETag,
+                      { type: statusTone[row.status] ?? 'info' },
+                      () => statusLabel[row.status] ?? row.status,
+                    ),
+                },
+              ),
+              h(ETableColumn, {
+                label: '负责人',
+                width: 140,
+                formatter: (row: ProjectVersion) =>
+                  row.assignee?.display_name ?? '-',
+              }),
+              h(ETableColumn, {
+                prop: 'scope_count',
+                label: '范围',
+                width: 100,
+              }),
+              h(
+                ETableColumn,
+                { label: '风险', minWidth: 180 },
+                {
+                  default: ({ row }: { row: ProjectVersion }) =>
+                    versionReleaseIssues(row).join('；') ||
+                    row.risk_summary ||
+                    '-',
+                },
+              ),
+              h(
+                ETableColumn,
+                { label: '操作', width: 120 },
+                {
+                  default: ({ row }: { row: ProjectVersion }) =>
+                    h(
+                      EButton,
+                      {
+                        size: 'small',
+                        type: 'primary',
+                        disabled:
+                          row.status === 'released' || isProjectArchived.value,
+                        onClick: (event: MouseEvent) => {
+                          event.stopPropagation()
+                          submitReleaseVersion(row)
+                        },
+                      },
+                      () => '发布',
+                    ),
+                },
+              ),
+            ],
+          ),
+        ]),
+        selectedVersion.value
+          ? h('div', { class: 'version-detail' }, [
+              h('div', { class: 'version-detail__heading' }, [
+                h('div', [
+                  h('h3', selectedVersion.value.name),
+                  h(
+                    'p',
+                    { class: 'eyebrow' },
+                    `${formatPlanRange(
+                      selectedVersion.value.start_at,
+                      selectedVersion.value.release_at,
+                    )} · ${
+                      selectedVersion.value.assignee?.display_name ?? '未分配'
+                    }`,
+                  ),
+                ]),
+                h(
+                  ETag,
+                  { type: statusTone[selectedVersion.value.status] ?? 'info' },
+                  () =>
+                    statusLabel[selectedVersion.value?.status ?? ''] ??
+                    selectedVersion.value?.status,
+                ),
+              ]),
+              h('div', { class: 'version-metrics' }, [
+                h('div', [
+                  h('strong', String(selectedVersion.value.scope_count)),
+                  h('span', '范围项'),
+                ]),
+                h('div', [
+                  h('strong', String(selectedVersion.value.test_plan_count)),
+                  h('span', '测试计划'),
+                ]),
+                h('div', [
+                  h(
+                    'strong',
+                    String(selectedVersion.value.incomplete_test_plan_count),
+                  ),
+                  h('span', '未完成计划'),
+                ]),
+                h('div', [
+                  h(
+                    'strong',
+                    String(selectedVersion.value.open_blocker_defect_count),
+                  ),
+                  h('span', '阻塞缺陷'),
+                ]),
+              ]),
+              h('div', { class: 'version-detail-form' }, [
+                h(EInput, {
+                  modelValue: detailForm.name,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.name = value),
+                  placeholder: '版本名称',
+                }),
+                h(
+                  ESelect,
+                  {
+                    modelValue: detailForm.stage_id,
+                    'onUpdate:modelValue': (value: string) =>
+                      (detailForm.stage_id = value),
+                    placeholder: '阶段',
+                  },
+                  () => renderStageOptions(editableStageRows.value),
+                ),
+                h(
+                  ESelect,
+                  {
+                    modelValue: detailForm.assignee_id,
+                    'onUpdate:modelValue': (value: string) =>
+                      (detailForm.assignee_id = value),
+                    clearable: true,
+                    placeholder: '负责人',
+                  },
+                  renderMemberOptions,
+                ),
+                h(EInput, {
+                  modelValue: detailForm.start_at,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.start_at = value),
+                  placeholder: '开始日期 YYYY-MM-DD',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.release_at,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.release_at = value),
+                  placeholder: '计划发布时间',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.description,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.description = value),
+                  placeholder: '版本描述',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.test_conclusion,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.test_conclusion = value),
+                  placeholder: '测试结论',
+                }),
+                h(EInput, {
+                  modelValue: detailForm.risk_summary,
+                  'onUpdate:modelValue': (value: string) =>
+                    (detailForm.risk_summary = value),
+                  placeholder: '风险说明',
+                }),
                 h(
                   EButton,
                   {
-                    size: 'small',
                     type: 'primary',
-                    disabled: row.status === 'released',
-                    onClick: () => releaseMutation.mutate(row),
+                    loading: saveMutation.isPending.value,
+                    disabled: isProjectArchived.value,
+                    onClick: submitSaveVersion,
                   },
-                  () => 'Release',
+                  () => '保存详情',
                 ),
-            },
-          ),
-        ]),
+              ]),
+              h('div', { class: 'version-scope-row' }, [
+                h(
+                  ESelect,
+                  {
+                    modelValue: scopeForm.work_item_id,
+                    'onUpdate:modelValue': (value: string) =>
+                      (scopeForm.work_item_id = value),
+                    filterable: true,
+                    clearable: true,
+                    placeholder: '选择工作项加入版本范围',
+                  },
+                  () =>
+                    availableScopeOptions.value.map((item: WorkItemSummary) =>
+                      h(EOption, {
+                        key: item.id,
+                        label: `${item.number} ${item.title}`,
+                        value: item.id,
+                      }),
+                    ),
+                ),
+                h(
+                  EButton,
+                  {
+                    loading: scopeMutation.isPending.value,
+                    disabled: isProjectArchived.value,
+                    onClick: submitAddScope,
+                  },
+                  () => '加入范围',
+                ),
+              ]),
+            ])
+          : h('p', { class: 'eyebrow' }, '暂无版本'),
       ])
   },
 })
@@ -2511,6 +3533,151 @@ onMounted(() => {
   font-size: var(--font-size-body-lg);
 }
 
+.sprint-panel {
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.sprint-status-summary,
+.sprint-create-row,
+.sprint-category-row,
+.sprint-detail__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sprint-create-row :deep(.el-input) {
+  width: 220px;
+  max-width: 100%;
+}
+
+.sprint-create-row :deep(.el-select),
+.sprint-category-row :deep(.el-input) {
+  width: 180px;
+  max-width: 100%;
+}
+
+.sprint-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.sprint-detail {
+  display: grid;
+  gap: 16px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(40, 70, 100, 0.1);
+}
+
+.sprint-detail__heading {
+  justify-content: space-between;
+}
+
+.sprint-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.sprint-metrics > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(40, 70, 100, 0.1);
+}
+
+.sprint-metrics strong {
+  font-size: var(--font-size-body-lg);
+}
+
+.sprint-metrics span,
+.sprint-report p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body-sm);
+}
+
+.sprint-detail-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.sprint-report {
+  display: grid;
+  gap: 6px;
+}
+
+.version-panel {
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.version-create-row,
+.version-detail__heading,
+.version-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-create-row :deep(.el-input),
+.version-create-row :deep(.el-select),
+.version-scope-row :deep(.el-select) {
+  width: 240px;
+  max-width: 100%;
+}
+
+.version-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.version-detail {
+  display: grid;
+  gap: 16px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(40, 70, 100, 0.1);
+}
+
+.version-detail__heading {
+  justify-content: space-between;
+}
+
+.version-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.version-metrics > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(40, 70, 100, 0.1);
+}
+
+.version-metrics strong {
+  font-size: var(--font-size-body-lg);
+}
+
+.version-metrics span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body-sm);
+}
+
+.version-detail-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 8px;
+}
+
 .eyebrow {
   color: var(--color-text-secondary);
   font-size: var(--font-size-body-sm);
@@ -2556,6 +3723,13 @@ onMounted(() => {
   }
 
   .project-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sprint-metrics,
+  .sprint-detail-form,
+  .version-metrics,
+  .version-detail-form {
     grid-template-columns: 1fr;
   }
 

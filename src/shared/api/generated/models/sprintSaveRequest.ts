@@ -8,11 +8,16 @@
 export interface SprintSaveRequest {
   name: string
   goal?: string
+  description?: string
   status?: string
   start_date?: string
   end_date?: string
-  owner_id?: string | null
+  assignee_id?: string | null
+  category_id?: string | null
   planned_story_points?: number
-  planned_hours?: number
+  started_story_points?: number
+  completed_story_points?: number
+  planned_workload_hours?: number
+  completed_workload_hours?: number
   row_version?: number
 }

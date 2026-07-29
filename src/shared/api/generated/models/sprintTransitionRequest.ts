@@ -4,9 +4,8 @@
  * Project Management Backend API
  * OpenAPI spec version: 0.2.0
  */
-import type { VersionScopeItem } from './versionScopeItem'
 
-export interface VersionScopeRequest {
-  items: VersionScopeItem[]
+export interface SprintTransitionRequest {
   row_version: number
+  summary?: string
 }

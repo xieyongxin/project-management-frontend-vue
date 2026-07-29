@@ -42,8 +42,11 @@ import type {
   RoleCreate,
   RoleDto,
   RoleUpdate,
+  SprintCategoryDto,
+  SprintCategorySaveRequest,
   SprintDto,
   SprintSaveRequest,
+  SprintTransitionRequest,
   TestExecutionBoardDto,
   TestPlanDto,
   TestPlanSaveRequest,
@@ -57,6 +60,7 @@ import type {
   VersionDto,
   VersionSaveRequest,
   VersionScopeRequest,
+  VersionStageDto,
   WecomAuthorizeResponse,
   WorkItemCommentCreateRequest,
   WorkItemCreateRequest,
@@ -697,6 +701,103 @@ export const createSprint = (
   )
 }
 
+export const getProjectSprintCategories = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<SprintCategoryDto[]>>,
+) => {
+  return apiClient<SprintCategoryDto[]>(
+    { url: `/projects/${id}/sprint-categories`, method: 'GET' },
+    options,
+  )
+}
+
+export const createSprintCategory = (
+  id: string,
+  sprintCategorySaveRequest: BodyType<SprintCategorySaveRequest>,
+  options?: SecondParameter<typeof apiClient<SprintCategoryDto[]>>,
+) => {
+  return apiClient<SprintCategoryDto[]>(
+    {
+      url: `/projects/${id}/sprint-categories`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: sprintCategorySaveRequest,
+    },
+    options,
+  )
+}
+
+export const getSprint = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<SprintDto>>,
+) => {
+  return apiClient<SprintDto>({ url: `/sprints/${id}`, method: 'GET' }, options)
+}
+
+export const updateSprint = (
+  id: string,
+  sprintSaveRequest: BodyType<SprintSaveRequest>,
+  options?: SecondParameter<typeof apiClient<SprintDto>>,
+) => {
+  return apiClient<SprintDto>(
+    {
+      url: `/sprints/${id}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: sprintSaveRequest,
+    },
+    options,
+  )
+}
+
+export const startSprint = (
+  id: string,
+  sprintTransitionRequest: BodyType<SprintTransitionRequest>,
+  options?: SecondParameter<typeof apiClient<SprintDto>>,
+) => {
+  return apiClient<SprintDto>(
+    {
+      url: `/sprints/${id}/start`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: sprintTransitionRequest,
+    },
+    options,
+  )
+}
+
+export const completeSprint = (
+  id: string,
+  sprintTransitionRequest: BodyType<SprintTransitionRequest>,
+  options?: SecondParameter<typeof apiClient<SprintDto>>,
+) => {
+  return apiClient<SprintDto>(
+    {
+      url: `/sprints/${id}/complete`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: sprintTransitionRequest,
+    },
+    options,
+  )
+}
+
+export const reopenSprint = (
+  id: string,
+  sprintTransitionRequest: BodyType<SprintTransitionRequest>,
+  options?: SecondParameter<typeof apiClient<SprintDto>>,
+) => {
+  return apiClient<SprintDto>(
+    {
+      url: `/sprints/${id}/reopen`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: sprintTransitionRequest,
+    },
+    options,
+  )
+}
+
 export const getProjectPhases = (
   id: string,
   options?: SecondParameter<typeof apiClient<PhaseDto[]>>,
@@ -736,9 +837,9 @@ export const getProjectVersions = (
 export const createVersion = (
   id: string,
   versionSaveRequest: BodyType<VersionSaveRequest>,
-  options?: SecondParameter<typeof apiClient<VersionDto[]>>,
+  options?: SecondParameter<typeof apiClient<VersionDto>>,
 ) => {
-  return apiClient<VersionDto[]>(
+  return apiClient<VersionDto>(
     {
       url: `/projects/${id}/versions`,
       method: 'POST',
@@ -749,12 +850,32 @@ export const createVersion = (
   )
 }
 
+export const getProjectVersionStages = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<VersionStageDto[]>>,
+) => {
+  return apiClient<VersionStageDto[]>(
+    { url: `/projects/${id}/version-stages`, method: 'GET' },
+    options,
+  )
+}
+
+export const getVersion = (
+  id: string,
+  options?: SecondParameter<typeof apiClient<VersionDto>>,
+) => {
+  return apiClient<VersionDto>(
+    { url: `/versions/${id}`, method: 'GET' },
+    options,
+  )
+}
+
 export const updateVersion = (
   id: string,
   versionSaveRequest: BodyType<VersionSaveRequest>,
-  options?: SecondParameter<typeof apiClient<void>>,
+  options?: SecondParameter<typeof apiClient<VersionDto>>,
 ) => {
-  return apiClient<void>(
+  return apiClient<VersionDto>(
     {
       url: `/versions/${id}`,
       method: 'PATCH',
@@ -768,9 +889,9 @@ export const updateVersion = (
 export const addVersionScope = (
   id: string,
   versionScopeRequest: BodyType<VersionScopeRequest>,
-  options?: SecondParameter<typeof apiClient<void>>,
+  options?: SecondParameter<typeof apiClient<VersionDto>>,
 ) => {
-  return apiClient<void>(
+  return apiClient<VersionDto>(
     {
       url: `/versions/${id}/scope`,
       method: 'POST',
@@ -784,9 +905,9 @@ export const addVersionScope = (
 export const releaseVersion = (
   id: string,
   releaseRequest: BodyType<ReleaseRequest>,
-  options?: SecondParameter<typeof apiClient<void>>,
+  options?: SecondParameter<typeof apiClient<VersionDto>>,
 ) => {
-  return apiClient<void>(
+  return apiClient<VersionDto>(
     {
       url: `/versions/${id}/releases`,
       method: 'POST',
@@ -1045,6 +1166,25 @@ export type GetProjectSprintsResult = NonNullable<
 export type CreateSprintResult = NonNullable<
   Awaited<ReturnType<typeof createSprint>>
 >
+export type GetProjectSprintCategoriesResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectSprintCategories>>
+>
+export type CreateSprintCategoryResult = NonNullable<
+  Awaited<ReturnType<typeof createSprintCategory>>
+>
+export type GetSprintResult = NonNullable<Awaited<ReturnType<typeof getSprint>>>
+export type UpdateSprintResult = NonNullable<
+  Awaited<ReturnType<typeof updateSprint>>
+>
+export type StartSprintResult = NonNullable<
+  Awaited<ReturnType<typeof startSprint>>
+>
+export type CompleteSprintResult = NonNullable<
+  Awaited<ReturnType<typeof completeSprint>>
+>
+export type ReopenSprintResult = NonNullable<
+  Awaited<ReturnType<typeof reopenSprint>>
+>
 export type GetProjectPhasesResult = NonNullable<
   Awaited<ReturnType<typeof getProjectPhases>>
 >
@@ -1056,6 +1196,12 @@ export type GetProjectVersionsResult = NonNullable<
 >
 export type CreateVersionResult = NonNullable<
   Awaited<ReturnType<typeof createVersion>>
+>
+export type GetProjectVersionStagesResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectVersionStages>>
+>
+export type GetVersionResult = NonNullable<
+  Awaited<ReturnType<typeof getVersion>>
 >
 export type UpdateVersionResult = NonNullable<
   Awaited<ReturnType<typeof updateVersion>>

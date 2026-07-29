@@ -7,10 +7,11 @@
 
 export interface VersionSaveRequest {
   name: string
+  stage_id?: string | null
   status?: string
-  owner_id?: string | null
-  start_date?: string
-  planned_release_at?: string
+  assignee_id?: string | null
+  start_at?: string
+  release_at?: string
   description?: string
   test_conclusion?: string
   risk_summary?: string

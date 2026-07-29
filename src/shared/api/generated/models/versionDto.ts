@@ -5,19 +5,24 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { UserLiteDto } from './userLiteDto'
+import type { VersionStageDto } from './versionStageDto'
 
 export interface VersionDto {
   id: string
   project_id: string
   name: string
   status: string
-  owner?: UserLiteDto | null
-  start_date: string
-  planned_release_at: string
+  stage?: VersionStageDto | null
+  assignee?: UserLiteDto | null
+  start_at: string
+  release_at: string
   released_at: string
   description: string
   test_conclusion: string
   risk_summary: string
   scope_count: number
+  test_plan_count: number
+  incomplete_test_plan_count: number
+  open_blocker_defect_count: number
   row_version: number
 }
